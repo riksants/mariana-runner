@@ -1,0 +1,350 @@
+:root {
+  --ink: #2b2b2b;
+  --paper: #f3ead9;
+  --paper-dim: #ece3d2;
+  --muted: #6b6459;   /* verified ≥4.5:1 on --paper */
+  --accent: #a83f1f;  /* verified ≥4.5:1 on --paper */
+  --font-display: 'Press Start 2P', 'Courier New', monospace;
+  --font-body: 'VT323', 'Consolas', monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--paper-dim);
+  overflow: hidden;
+  overscroll-behavior: none;
+  font-family: var(--font-body);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+}
+
+::selection {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+#game-wrap {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--paper-dim);
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+            max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  touch-action: none;
+}
+
+#game-frame {
+  position: relative;
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.15);
+  touch-action: none;
+  user-select: none;
+  line-height: 0;
+}
+
+#game {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  #game-frame { border-width: 2px; }
+}
+
+/* ---------- HUD (live score, drawn as real DOM text for crisp
+   rendering at any canvas scale/DPI) ---------- */
+#hud {
+  position: absolute;
+  z-index: 2;
+  top: 10px;
+  right: 14px;
+  text-align: right;
+  pointer-events: none;
+  font-family: var(--font-display);
+  line-height: 1.5;
+}
+
+#hud-score {
+  font-size: clamp(11px, 2.4vmin, 16px);
+  color: var(--ink);
+  letter-spacing: 1px;
+}
+
+#hud-hiscore {
+  font-size: clamp(8px, 1.7vmin, 11px);
+  color: var(--muted);
+  letter-spacing: 1px;
+}
+
+/* ---------- Active power-up status badges ---------- */
+#status-effects {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: row-reverse;
+  justify-content: flex-start;
+  gap: 5px;
+}
+
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 5px;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 4px;
+  color: var(--ink);
+}
+
+.status-badge .icon {
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
+  flex: none;
+}
+
+.status-time {
+  font-family: var(--font-display);
+  font-size: 9px;
+  line-height: 1;
+}
+
+/* ---------- Corner icon buttons (mute / pause) ---------- */
+#corner-buttons {
+  position: absolute;
+  z-index: 2;
+  top: 10px;
+  left: 10px;
+  display: flex;
+  gap: 8px;
+}
+
+.icon-btn {
+  width: clamp(28px, 6vmin, 36px);
+  height: clamp(28px, 6vmin, 36px);
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--paper);
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: transform 0.08s ease, background-color 0.15s ease;
+}
+
+.icon-btn .icon {
+  width: 60%;
+  height: 60%;
+  fill: currentColor;
+}
+
+.icon-btn:hover {
+  background: #e8ddc4;
+}
+
+.icon-btn:active {
+  transform: translateY(2px) scale(0.96);
+}
+
+.icon-btn:focus-visible,
+.pixel-btn:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* ---------- Onboarding hint ---------- */
+#tap-hint {
+  position: absolute;
+  bottom: 6%;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: 18px;
+  letter-spacing: 1px;
+  opacity: 0.9;
+  pointer-events: none;
+  display: none;
+  transition: opacity 0.3s ease;
+}
+
+@media (max-width: 720px) {
+  #tap-hint.is-visible {
+    display: block;
+  }
+}
+
+/* ---------- Rotate-device suggestion (the world is landscape-shaped,
+   like the classic dino runner — portrait phones letterbox it) ---------- */
+#rotate-hint {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 14px 0 0;
+  display: none;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: 16px;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+#rotate-hint svg {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  stroke-width: 2;
+  flex: none;
+}
+
+@media (max-width: 480px) and (orientation: portrait) {
+  #rotate-hint { display: flex; }
+}
+
+/* ---------- Overlays (start / pause / game-over / loading) ---------- */
+.overlay {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(10px, 2.4vmin, 18px);
+  background: rgba(243, 234, 217, 0.72);
+  text-align: center;
+  padding: 16px;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(18px, 5.4vmin, 34px);
+  color: var(--ink);
+  line-height: 1.4;
+  letter-spacing: 1px;
+}
+
+.title--small {
+  font-size: clamp(16px, 4.4vmin, 26px);
+}
+
+.instruction {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: clamp(14px, 3vmin, 20px);
+  color: var(--muted);
+  letter-spacing: 0.5px;
+}
+
+.score-line {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: clamp(16px, 3.6vmin, 24px);
+  color: var(--ink);
+}
+
+.record-badge {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(10px, 2.6vmin, 14px);
+  color: var(--accent);
+  animation: record-pop 0.5s ease-out;
+}
+
+@keyframes record-pop {
+  0% { transform: scale(0.4); opacity: 0; }
+  60% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .record-badge { animation: none; }
+}
+
+.pixel-btn {
+  font-family: var(--font-display);
+  font-size: clamp(11px, 2.8vmin, 16px);
+  color: var(--ink);
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  border-radius: 0;
+  padding: clamp(10px, 2vmin, 14px) clamp(18px, 4vmin, 28px);
+  cursor: pointer;
+  box-shadow: 0 4px 0 var(--ink);
+  transition: transform 0.08s ease, box-shadow 0.08s ease, background-color 0.15s ease;
+}
+
+.pixel-btn:hover {
+  background: #e8ddc4;
+}
+
+.pixel-btn:active {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 var(--ink);
+}
+
+.pixel-btn--primary {
+  color: var(--paper);
+  background: var(--ink);
+}
+
+.pixel-btn--primary:hover {
+  background: #171717;
+}
+
+.loading-label {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(12px, 3vmin, 18px);
+  color: var(--ink);
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+#hud-score-value.pulse {
+  display: inline-block;
+  animation: score-pulse 0.35s ease;
+}
+
+@keyframes score-pulse {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.35); color: var(--accent); }
+  100% { transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #hud-score-value.pulse { animation: none; }
+}

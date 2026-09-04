@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Mariana Runner</title>
+<meta name="description" content="Mariana Runner — corra e pule obstáculos com Mariana e seu gato.">
+<meta name="theme-color" content="#ece3d2">
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+<link rel="manifest" href="manifest.json">
+
+<!-- iOS: installable, fullscreen, named home-screen app -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Mariana Runner">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<link rel="apple-touch-icon" sizes="120x120" href="assets/icons/icon-120.png">
+<link rel="apple-touch-icon" sizes="152x152" href="assets/icons/icon-152.png">
+<link rel="apple-touch-icon" sizes="167x167" href="assets/icons/icon-167.png">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/icons/icon-180.png">
+
+<!-- Android/Chrome: installable, standalone -->
+<meta name="mobile-web-app-capable" content="yes">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="game-wrap">
+    <div id="game-frame">
+      <canvas id="game" width="800" height="300" role="img" aria-label="Área de jogo: Mariana Runner"></canvas>
+
+      <div id="hud" aria-hidden="true" hidden>
+        <div id="hud-score"><span id="hud-score-value">00000</span></div>
+        <div id="hud-hiscore">HI <span id="hud-hiscore-value">00000</span></div>
+        <div id="status-effects">
+          <div class="status-badge" id="status-shield" hidden>
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.5 9 8 11 4.5-2 8-6 8-11V5l-8-3z" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="status-badge" id="status-star" hidden>
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.9 6.6L22 9.3l-5 4.9 1.2 7.1L12 17.9 5.8 21.3 7 14.2 2 9.3l7.1-.7L12 2z" fill="currentColor"/></svg>
+            <span class="status-time" id="status-star-time"></span>
+          </div>
+          <div class="status-badge" id="status-jump" hidden>
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5l7 7h-4v7h-6v-7H5l7-7z" fill="currentColor"/></svg>
+            <span class="status-time" id="status-jump-time"></span>
+          </div>
+        </div>
+      </div>
+
+      <div id="corner-buttons">
+        <button type="button" id="btn-mute" class="icon-btn" aria-label="Ativar/desativar som" aria-pressed="false">
+          <svg class="icon icon-sound-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 5V4L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M19 6a9 9 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <svg class="icon icon-sound-off" viewBox="0 0 24 24" aria-hidden="true" hidden><path d="M4 9v6h4l5 5V4L8 9H4z"/><path d="M16.2 9.8l5 5M21.2 9.8l-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+        </button>
+        <button type="button" id="btn-pause" class="icon-btn" aria-label="Pausar" hidden>
+          <svg class="icon icon-pause" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+          <svg class="icon icon-play" viewBox="0 0 24 24" aria-hidden="true" hidden><path d="M7 4.5v15l13-7.5-13-7.5z"/></svg>
+        </button>
+      </div>
+
+      <div id="tap-hint">Toque para pular</div>
+
+      <div id="overlay-start" class="overlay">
+        <h1 class="title">MARIANA RUNNER</h1>
+        <button type="button" id="btn-start" class="pixel-btn pixel-btn--primary">COMEÇAR</button>
+        <p class="instruction">ESPAÇO / TOQUE PARA PULAR</p>
+      </div>
+
+      <div id="overlay-gameover" class="overlay" hidden>
+        <h2 class="title title--small">GAME OVER</h2>
+        <p class="score-line">Pontuação: <span id="final-score">0</span></p>
+        <p class="record-badge" id="record-badge" hidden>NOVO RECORDE!</p>
+        <button type="button" id="btn-restart" class="pixel-btn pixel-btn--primary">JOGAR NOVAMENTE</button>
+        <p class="instruction">ESPAÇO PARA REINICIAR</p>
+      </div>
+
+      <div id="overlay-pause" class="overlay" hidden>
+        <h2 class="title title--small">PAUSADO</h2>
+        <button type="button" id="btn-resume" class="pixel-btn pixel-btn--primary">CONTINUAR</button>
+        <p class="instruction">ESPAÇO / P PARA CONTINUAR</p>
+      </div>
+
+      <div id="overlay-loading" class="overlay">
+        <p class="loading-label">CARREGANDO<span id="loading-dots">...</span></p>
+      </div>
+
+      <p id="rotate-hint">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 0 1 13.66-5.66M20 12a8 8 0 0 1-13.66 5.66" fill="none" stroke-linecap="round"/><path d="M17 3v4h-4M7 21v-4h4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Gire o aparelho para uma tela maior
+      </p>
+    </div>
+  </div>
+
+  <div id="sr-announcer" class="sr-only" aria-live="polite"></div>
+
+  <script src="js/particles.js"></script>
+  <script src="js/sprites.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/game.js"></script>
+
+  <script>
+    // PWA install support: offline app-shell cache.
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(() => {});
+      });
+    }
+    // Best-effort landscape lock for the installed app (Android/Chrome only —
+    // iOS Safari has no orientation-lock API; it keeps the existing rotate hint).
+    function tryLockLandscape() {
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+        || window.navigator.standalone === true;
+      if (isStandalone && screen.orientation && screen.orientation.lock) {
+        screen.orientation.lock('landscape').catch(() => {});
+      }
+    }
+    document.addEventListener('click', tryLockLandscape, { once: true });
+    document.addEventListener('touchend', tryLockLandscape, { once: true });
+  </script>
+</body>
+</html>
