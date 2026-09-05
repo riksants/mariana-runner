@@ -208,6 +208,13 @@ const AudioMgr = (() => {
       tone(988, 988, 0.05, 'triangle', 0.06, 0.05);
       tone(1318, 1318, 0.08, 'triangle', 0.06, 0.10);
     },
+    // Distinct from milestone()/streak()/record(): a decisive two-note
+    // square-wave chime for permanent achievement unlocks — clearly
+    // announces itself without stepping on the run's own celebration cues.
+    achievement() {
+      tone(587.33, 587.33, 0.08, 'square', 0.07);
+      tone(880.00, 880.00, 0.14, 'square', 0.08, 0.09);
+    },
     record() {
       tone(523, 523, 0.09, 'square', 0.08);
       tone(659, 659, 0.09, 'square', 0.08, 0.09);

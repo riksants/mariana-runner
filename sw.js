@@ -14,8 +14,9 @@
 // cache-first-forever strategy meant nothing published after a user's
 // first visit ever reached their already-installed copy. v3, 2026-09-05:
 // removed js/skin-effects.js — it no longer exists, and cache.addAll()
-// fails its entire install if even one precached URL 404s.)
-const CACHE_NAME = 'mariana-runner-v3';
+// fails its entire install if even one precached URL 404s. v4, 2026-09-05:
+// added js/achievements.js.)
+const CACHE_NAME = 'mariana-runner-v4';
 const APP_SHELL = [
   './',
   './index.html',
@@ -23,6 +24,7 @@ const APP_SHELL = [
   './css/style.css',
   './js/particles.js',
   './js/skins.js',
+  './js/achievements.js',
   './js/sprites.js',
   './js/audio.js',
   './js/game.js',

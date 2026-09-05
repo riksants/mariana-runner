@@ -185,6 +185,49 @@ html, body {
   outline-offset: 3px;
 }
 
+/* ---------- Achievement unlock toast ---------- */
+#achievement-toast {
+  position: absolute;
+  z-index: 2;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-10px);
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  padding: 6px 16px;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  /* #game-frame sets line-height:0 (for its own unrelated layout needs),
+     which collapses these two stacked text lines onto the same baseline
+     unless restored here. */
+  line-height: 1.4;
+}
+
+#achievement-toast.is-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+#achievement-toast-title {
+  font-family: var(--font-display);
+  font-size: 8px;
+  letter-spacing: 1px;
+  color: var(--muted);
+}
+
+#achievement-toast-name {
+  font-family: var(--font-display);
+  font-size: clamp(10px, 2.2vmin, 14px);
+  color: var(--accent);
+  margin-top: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #achievement-toast { transition: none; }
+}
+
 /* ---------- Onboarding hint ---------- */
 #tap-hint {
   position: absolute;

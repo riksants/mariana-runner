@@ -27,6 +27,8 @@
   const hudCoinsValue = document.getElementById('hud-coins-value');
   const tapHint = document.getElementById('tap-hint');
   const srAnnouncer = document.getElementById('sr-announcer');
+  const achievementToast = document.getElementById('achievement-toast');
+  const achievementToastName = document.getElementById('achievement-toast-name');
   const statusBadges = {
     shield: document.getElementById('status-shield'),
     star: document.getElementById('status-star'),
@@ -514,6 +516,9 @@
     updateCoinsHud();
     AudioMgr.coin();
     Particles.dust(x, y, { count: 4, color: 'rgba(230,180,60,' });
+    const lifetimeCoins = AchievementStore.addLifetimeCoins(1);
+    if (lifetimeCoins >= 100) unlockAchievement('coins_100');
+    if (lifetimeCoins >= 1000) unlockAchievement('coins_1000');
   }
 
   // Called once per obstacle successfully cleared (see the obstacle
@@ -525,6 +530,8 @@
     obstacleStreak += count;
     const newMilestone = Math.floor(obstacleStreak / STREAK_MILESTONE);
     if (newMilestone > prevMilestone) celebrateStreak();
+    if (obstacleStreak >= 10) unlockAchievement('streak_10');
+    if (obstacleStreak >= 50) unlockAchievement('streak_50');
   }
 
   function celebrateStreak() {
@@ -544,6 +551,51 @@
     Particles.burst(px, player.y - GIRL_H * 0.6);
     AudioMgr.record();
     announce(`Novo recorde: ${flooredScore} pontos!`);
+    unlockAchievement('new_record');
+  }
+
+  // Permanent one-time unlocks (AchievementStore, in js/achievements.js).
+  // unlockAchievement() is safe to call every time its condition is true —
+  // AchievementStore.unlock() itself no-ops (returns false) once an id is
+  // already unlocked, so call sites never need their own "only once" guard.
+  //
+  // Two achievements can legitimately unlock in the same frame (e.g.
+  // crossing 5000 points in the same tick a new personal record is set),
+  // so the toast is a small FIFO queue rather than a single slot — without
+  // it, a second unlockAchievement() call mid-transition would overwrite
+  // the first toast's text while its fade-in animation was still playing,
+  // producing garbled overlapping text instead of two clean toasts in a row.
+  let achievementToastQueue = [];
+  let achievementToastShowing = false;
+  let achievementToastTimer = null;
+  function showAchievementToast(name) {
+    achievementToastQueue.push(name);
+    if (!achievementToastShowing) advanceAchievementToastQueue();
+  }
+  function advanceAchievementToastQueue() {
+    const name = achievementToastQueue.shift();
+    if (name === undefined) { achievementToastShowing = false; return; }
+    achievementToastShowing = true;
+    achievementToastName.textContent = name.toUpperCase();
+    achievementToast.hidden = false;
+    requestAnimationFrame(() => achievementToast.classList.add('is-visible'));
+    clearTimeout(achievementToastTimer);
+    achievementToastTimer = setTimeout(() => {
+      achievementToast.classList.remove('is-visible');
+      setTimeout(() => {
+        achievementToast.hidden = true;
+        advanceAchievementToastQueue();
+      }, 260);
+    }, 2200);
+  }
+
+  function unlockAchievement(id) {
+    if (!AchievementStore.unlock(id)) return;
+    const def = achievementById(id);
+    if (!def) return;
+    showAchievementToast(def.name);
+    AudioMgr.achievement();
+    announce(`Conquista desbloqueada: ${def.name}.`);
   }
 
   function spawnPowerup() {
@@ -774,6 +826,7 @@
 
   function endGame() {
     const finalScore = Math.floor(score);
+    unlockAchievement('first_run');
     const isRecord = finalScore > highScore && finalScore > 0;
     if (isRecord) {
       highScore = finalScore;
@@ -895,6 +948,7 @@
         coinBalance = SkinStore.getCoins();
         AudioMgr.powerup();
         updateCoinsHud();
+        if (SkinStore.getUnlocked().length === SKIN_DEFS.length) unlockAchievement('all_skins');
       }
     } else if (action === 'owned') {
       SkinStore.setEquipped(id);
@@ -927,6 +981,8 @@
       recordBrokenThisRun = true;
       celebrateNewRecordMidRun(flooredScore);
     }
+
+    if (flooredScore >= 5000) unlockAchievement('score_5000');
 
     if (multiplierTimer > 0) {
       multiplierTimer -= dt;
@@ -1079,6 +1135,7 @@
           ScreenShake.hit(0.5);
           Particles.dust(ox + ow / 2, oy + oh / 2, { count: 10, color: 'rgba(43,43,43,' });
           obstacles = obstacles.filter(other => other !== o);
+          unlockAchievement('shield_save');
           break;
         }
         obstacleStreak = 0;
