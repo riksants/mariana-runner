@@ -212,13 +212,43 @@
     seed: Math.random() * Math.PI * 2,
   }));
 
+  function cyclePosition() {
+    const span = ((elapsed % PHASE_CYCLE_SECONDS) + PHASE_CYCLE_SECONDS) % PHASE_CYCLE_SECONDS;
+    return span / PHASE_CYCLE_SECONDS;
+  }
+
   // Smooth 0→1→0 breathing curve across one full cycle: 0 at sunrise/
   // sunset boundary, 1 at the darkest point of night. Continuous and
   // symmetric, so there is never a jump cut in either direction.
   function currentDarkness() {
-    const span = ((elapsed % PHASE_CYCLE_SECONDS) + PHASE_CYCLE_SECONDS) % PHASE_CYCLE_SECONDS;
-    const cyclePos = span / PHASE_CYCLE_SECONDS;
-    return (1 - Math.cos(2 * Math.PI * cyclePos)) / 2;
+    return (1 - Math.cos(2 * Math.PI * cyclePosition())) / 2;
+  }
+
+  // Sun/moon arcing across the sky in sync with the same cycle: the sun
+  // rises/sets across the "day" half of the cycle (centered on the
+  // brightest point), handing off to the moon across the "night" half
+  // (centered on the darkest point) — both cross paths at the horizon,
+  // like the real thing, so the light source is always visible, not
+  // just the lighting tint.
+  function celestialArc() {
+    const x = cyclePosition();
+    let body, phase;
+    if (x < 0.25) { body = 'sun'; phase = x + 0.25; }
+    else if (x < 0.75) { body = 'moon'; phase = x - 0.25; }
+    else { body = 'sun'; phase = x - 0.75; }
+    const angle = (phase / 0.5) * Math.PI; // 0 at rise, π at set
+    const margin = 90;
+    // Anchored to GROUND_Y (not a fixed pixel value) so the arc still
+    // clears the mountain silhouette on the taller logical canvas used
+    // on short/wide landscape phones.
+    const horizonY = GROUND_Y - 110;
+    const riseHeight = Math.min(140, horizonY - 25);
+    return {
+      body,
+      cx: margin + (W - margin * 2) * (angle / Math.PI),
+      cy: horizonY - Math.sin(angle) * riseHeight,
+      alpha: Math.max(0.15, Math.sin(angle)),
+    };
   }
 
   function lerp(a, b, t) { return a + (b - a) * t; }
@@ -845,6 +875,35 @@
     ctx.restore();
   }
 
+  function drawCelestialBody() {
+    const { body, cx, cy, alpha } = celestialArc();
+    const r = 26;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#2b2b2b';
+    ctx.lineWidth = 3;
+    if (body === 'sun') {
+      ctx.fillStyle = '#ffce6b';
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    } else {
+      const path = new Path2D();
+      path.arc(cx, cy, r, 0, Math.PI * 2);
+      const biteR = r * 1.15;
+      const biteCx = cx + r * 0.65;
+      const biteCy = cy - r * 0.3;
+      path.moveTo(biteCx + biteR, biteCy);
+      path.arc(biteCx, biteCy, biteR, 0, Math.PI * 2);
+      ctx.fillStyle = '#f3ead9';
+      ctx.fill(path, 'evenodd');
+      ctx.stroke(path);
+    }
+    ctx.restore();
+  }
+
   function drawPhaseTint(darkness) {
     if (darkness <= 0) return;
     ctx.save();
@@ -1000,6 +1059,7 @@
       const darkness = currentDarkness();
       drawPhaseTint(darkness);
       drawStars(darkness);
+      drawCelestialBody();
     }
     Particles.draw(ctx);
     ctx.restore();
