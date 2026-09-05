@@ -671,6 +671,7 @@
     powerups = [];
     coins = [];
     Particles.clear();
+    SkinEffects.reset();
     resetPlayerY();
     player.vy = 0;
     player.jumping = false;
@@ -835,6 +836,8 @@
     elapsed += dt;
     const speed = currentSpeed();
     score += dt * (speed / 6.5) * scoreMultiplier;
+
+    SkinEffects.update(dt, SkinStore.getEquipped(), PLAYER_RIGHT_X - GIRL_H * 0.32, player.y - GIRL_H * 0.5);
 
     const flooredScore = Math.floor(score);
     if (flooredScore >= milestoneFloor + 100) {
@@ -1245,6 +1248,7 @@
       drawDecor();
       drawCat();
       drawPlayer();
+      SkinEffects.draw(ctx, SkinStore.getEquipped(), PLAYER_RIGHT_X - GIRL_H * 0.32, player.y - GIRL_H * 0.5, player.y - GIRL_H, elapsed, true);
     } else {
       drawBackground();
       drawDecor();
@@ -1254,6 +1258,7 @@
       drawCat();
       drawPlayer();
       if (shieldActive) drawShieldHalo();
+      SkinEffects.draw(ctx, SkinStore.getEquipped(), PLAYER_RIGHT_X - GIRL_H * 0.32, player.y - GIRL_H * 0.5, player.y - GIRL_H, elapsed, false);
       const darkness = currentDarkness();
       drawPhaseTint(darkness);
       drawStars(darkness);
