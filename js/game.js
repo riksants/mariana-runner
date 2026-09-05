@@ -792,10 +792,13 @@
       const btnClass = status === 'equipped' ? 'is-equipped' : status === 'buyable' ? 'is-buyable' : '';
       const disabled = (status === 'equipped' || status === 'locked') ? 'disabled' : '';
       const priceLabel = skin.price > 0 ? `${skin.price} MOEDAS` : 'GRÁTIS';
+      const previewSrc = SKIN_SPRITE_FRAMES[skin.id]
+        ? `assets/sprites/skins/${skin.id}/girl_idle_01.png`
+        : 'assets/sprites/girl_idle_01.png';
       return `
         <div class="skin-card">
           <div class="skin-card-preview">
-            <img src="assets/sprites/girl_idle_01.png" alt="${skin.name}">
+            <img src="${previewSrc}" alt="${skin.name}">
             <span class="skin-card-badge">${SKIN_ICON_SVG[skin.icon]}</span>
           </div>
           <div class="skin-card-name">${skin.name.toUpperCase()}</div>
