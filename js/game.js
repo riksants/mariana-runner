@@ -890,16 +890,28 @@
       ctx.fill();
       ctx.stroke();
     } else {
+      const biteR = r * 1.05;
+      const biteCx = cx + r * 0.85;
+      const biteCy = cy - r * 0.5;
       const path = new Path2D();
       path.arc(cx, cy, r, 0, Math.PI * 2);
-      const biteR = r * 1.15;
-      const biteCx = cx + r * 0.65;
-      const biteCy = cy - r * 0.3;
       path.moveTo(biteCx + biteR, biteCy);
       path.arc(biteCx, biteCy, biteR, 0, Math.PI * 2);
       ctx.fillStyle = '#f3ead9';
       ctx.fill(path, 'evenodd');
-      ctx.stroke(path);
+      // Clip to the crescent silhouette before stroking each full circle,
+      // so only the two arcs that actually bound the crescent get inked —
+      // stroking the raw circles would otherwise outline the bitten-off
+      // part too.
+      ctx.save();
+      ctx.clip(path, 'evenodd');
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(biteCx, biteCy, biteR, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
     }
     ctx.restore();
   }
