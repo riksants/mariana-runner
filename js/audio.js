@@ -185,5 +185,6 @@ const AudioMgr = (() => {
       noiseBurst(0.1, 0.12, 3000);
       tone(300, 140, 0.15, 'triangle', 0.08, 0.02);
     },
+    coin() { tone(880, 1200, 0.08, 'square', 0.05); },
   };
 })();

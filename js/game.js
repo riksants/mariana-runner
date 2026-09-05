@@ -178,6 +178,7 @@
   // established icon-chrome vocabulary instead of imitating painted art.
   // ---------------------------------------------------------
   const POWERUP_SIZE = 34; // circular badge diameter, game units
+  const COIN_SIZE = 18; // circular coin diameter, game units — smaller than power-ups, they're common
   const POWERUP_MIN_SCORE = 40; // don't spawn before the player has found their feet
   const DOUBLE_JUMP_DURATION = 10; // seconds
   const MULTIPLIER_DURATION = 8; // seconds
@@ -305,6 +306,11 @@
   let powerups = [];
   let distanceSinceLastPowerup = 0;
   let nextPowerupGap = 0;
+
+  let coins = [];
+  let distanceSinceLastCoinCluster = 0;
+  let nextCoinGap = 0;
+  let coinBalance = SkinStore.getCoins();
 
   let shieldActive = false;
   let doubleJumpActive = false;
@@ -437,6 +443,32 @@
   function schedulePowerupSpawn() {
     nextPowerupGap = 480 + Math.random() * 420;
     distanceSinceLastPowerup = 0;
+  }
+
+  function scheduleNextCoinCluster() {
+    nextCoinGap = rollCoinClusterGap();
+    distanceSinceLastCoinCluster = 0;
+  }
+
+  function spawnCoinCluster() {
+    const baseY = GROUND_Y - 30 - Math.random() * 50;
+    for (let i = 0; i < COIN_CLUSTER_SIZE; i++) {
+      const arc = Math.sin((i / (COIN_CLUSTER_SIZE - 1)) * Math.PI) * 16;
+      coins.push({
+        x: W + 10 + i * 24,
+        baseY: baseY - arc,
+        w: COIN_SIZE,
+        h: COIN_SIZE,
+        bobPhase: Math.random() * Math.PI * 2,
+      });
+    }
+  }
+
+  function collectCoin(x, y) {
+    coinBalance = SkinStore.addCoins(1);
+    updateCoinsHud();
+    AudioMgr.coin();
+    Particles.dust(x, y, { count: 4, color: 'rgba(230,180,60,' });
   }
 
   function spawnPowerup() {
@@ -629,6 +661,7 @@
     obstacles = [];
     decor = [];
     powerups = [];
+    coins = [];
     Particles.clear();
     resetPlayerY();
     player.vy = 0;
@@ -647,6 +680,7 @@
     scheduleNextSpawn();
     scheduleNextDecor();
     schedulePowerupSpawn();
+    scheduleNextCoinCluster();
     lastTime = null;
     setState('playing');
     AudioMgr.start();
@@ -789,6 +823,15 @@
     for (const p of powerups) p.x -= speed * dt;
     powerups = powerups.filter(p => p.x + p.w > -10);
 
+    // --- coins ---
+    distanceSinceLastCoinCluster += speed * dt;
+    if (distanceSinceLastCoinCluster >= nextCoinGap) {
+      spawnCoinCluster();
+      scheduleNextCoinCluster();
+    }
+    for (const c of coins) c.x -= speed * dt;
+    coins = coins.filter(c => c.x + c.w > -10);
+
     // --- collision ---
     const px = PLAYER_RIGHT_X - PLAYER_HITBOX.rightInset - PLAYER_HITBOX.width;
     const pw = PLAYER_HITBOX.width;
@@ -813,6 +856,18 @@
       }
     }
     if (collected.length) powerups = powerups.filter(p => !collected.includes(p));
+
+    const collectedCoins = [];
+    for (const c of coins) {
+      const bobY = c.baseY + Math.sin(elapsed * 2.4 + c.bobPhase) * 6;
+      const cux = c.x;
+      const cuy = bobY - c.h / 2;
+      if (pickupX < cux + c.w && pickupX + pickupW > cux && pickupY < cuy + c.h && pickupY + pickupH > cuy) {
+        collectedCoins.push(c);
+        collectCoin(cux + c.w / 2, cuy + c.h / 2);
+      }
+    }
+    if (collectedCoins.length) coins = coins.filter(c => !collectedCoins.includes(c));
 
     for (const o of obstacles) {
       const ox = o.x + o.w * 0.18;
@@ -963,6 +1018,29 @@
     }
   }
 
+  function drawCoins() {
+    for (const c of coins) {
+      const bobY = c.baseY + Math.sin(elapsed * 2.4 + c.bobPhase) * 6;
+      const cx = c.x + c.w / 2;
+      const cy = bobY;
+      ctx.save();
+      ctx.fillStyle = '#f0c04a';
+      ctx.strokeStyle = '#2b2b2b';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, c.w / 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - c.w * 0.22);
+      ctx.lineTo(cx, cy + c.w * 0.22);
+      ctx.strokeStyle = '#c99a2e';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
   function drawBackground() {
     ctx.fillStyle = '#f3ead9';
     ctx.fillRect(0, 0, W, H);
@@ -1065,6 +1143,7 @@
       drawDecor();
       drawObstacles();
       drawPowerups();
+      drawCoins();
       drawCat();
       drawPlayer();
       if (shieldActive) drawShieldHalo();
