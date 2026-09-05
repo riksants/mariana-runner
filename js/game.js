@@ -76,13 +76,19 @@
   const GROUND_SURFACE_OFFSET = 6;
   let GROUND_Y = H - GROUND_TILE_H + GROUND_SURFACE_OFFSET;
 
-  function computeLogicalHeight() {
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    const viewportAspect = vw / vh;
+  // availAspect must be the aspect ratio of the space actually left for
+  // the frame AFTER the wrap's own padding is subtracted, not the raw
+  // window aspect ratio — padding removes the same fixed number of CSS
+  // pixels from width and height, which shifts the aspect ratio just
+  // enough (especially on smaller phones) that a logical height tuned to
+  // the raw viewport aspect never quite fits the padded box, leaving a
+  // strip of unused width down each side even though the whole point of
+  // this function is to avoid exactly that letterboxing.
+  function computeLogicalHeight(availW, availH) {
+    const availAspect = availW / availH;
     let newH = BASE_H;
-    if (vw <= MOBILE_WIDTH_THRESHOLD && viewportAspect < BASE_ASPECT && viewportAspect > 0.9) {
-      newH = Math.round(W / viewportAspect);
+    if (availW <= MOBILE_WIDTH_THRESHOLD && availAspect < BASE_ASPECT && availAspect > 0.9) {
+      newH = Math.round(W / availAspect);
       newH = Math.max(MIN_H, Math.min(MAX_H, newH));
     }
     return newH;
@@ -93,18 +99,19 @@
   // every HUD line stays crisp instead of being upscaled from a fixed
   // 800×H backing store.
   function applyResolution() {
-    const newH = computeLogicalHeight();
+    const wrapStyle = getComputedStyle(wrap);
+    const padX = parseFloat(wrapStyle.paddingLeft) + parseFloat(wrapStyle.paddingRight);
+    const padY = parseFloat(wrapStyle.paddingTop) + parseFloat(wrapStyle.paddingBottom);
+    const availW = wrap.clientWidth - padX;
+    const availH = wrap.clientHeight - padY;
+
+    const newH = computeLogicalHeight(availW, availH);
     const heightChanged = newH !== H;
     if (heightChanged) {
       H = newH;
       GROUND_Y = H - GROUND_TILE_H + GROUND_SURFACE_OFFSET;
     }
 
-    const wrapStyle = getComputedStyle(wrap);
-    const padX = parseFloat(wrapStyle.paddingLeft) + parseFloat(wrapStyle.paddingRight);
-    const padY = parseFloat(wrapStyle.paddingTop) + parseFloat(wrapStyle.paddingBottom);
-    const availW = wrap.clientWidth - padX;
-    const availH = wrap.clientHeight - padY;
     const ratio = W / H;
     let cssW = availW;
     let cssH = cssW / ratio;
@@ -236,33 +243,6 @@
   // symmetric, so there is never a jump cut in either direction.
   function currentDarkness() {
     return (1 - Math.cos(2 * Math.PI * cyclePosition())) / 2;
-  }
-
-  // Sun/moon arcing across the sky in sync with the same cycle: the sun
-  // rises/sets across the "day" half of the cycle (centered on the
-  // brightest point), handing off to the moon across the "night" half
-  // (centered on the darkest point) — both cross paths at the horizon,
-  // like the real thing, so the light source is always visible, not
-  // just the lighting tint.
-  function celestialArc() {
-    const x = cyclePosition();
-    let body, phase;
-    if (x < 0.25) { body = 'sun'; phase = x + 0.25; }
-    else if (x < 0.75) { body = 'moon'; phase = x - 0.25; }
-    else { body = 'sun'; phase = x - 0.75; }
-    const angle = (phase / 0.5) * Math.PI; // 0 at rise, π at set
-    const margin = 90;
-    // Anchored to GROUND_Y (not a fixed pixel value) so the arc still
-    // clears the mountain silhouette on the taller logical canvas used
-    // on short/wide landscape phones.
-    const horizonY = GROUND_Y - 110;
-    const riseHeight = Math.min(140, horizonY - 25);
-    return {
-      body,
-      cx: margin + (W - margin * 2) * (angle / Math.PI),
-      cy: horizonY - Math.sin(angle) * riseHeight,
-      alpha: Math.max(0.15, Math.sin(angle)),
-    };
   }
 
   function lerp(a, b, t) { return a + (b - a) * t; }
@@ -676,7 +656,6 @@
     powerups = [];
     coins = [];
     Particles.clear();
-    SkinEffects.reset();
     resetPlayerY();
     player.vy = 0;
     player.jumping = false;
@@ -844,8 +823,6 @@
     elapsed += dt;
     const speed = currentSpeed();
     score += dt * (speed / 6.5) * scoreMultiplier;
-
-    SkinEffects.update(dt, SkinStore.getEquipped(), PLAYER_RIGHT_X - GIRL_H * 0.32, player.y - GIRL_H * 0.5);
 
     const flooredScore = Math.floor(score);
     if (flooredScore >= milestoneFloor + 100) {
@@ -1041,118 +1018,6 @@
     ctx.restore();
   }
 
-  function drawSun(cx, cy, r) {
-    // Classic flat sun glyph: a ring of thick ink-outlined rays behind
-    // the disc, matching the game's ink-on-paper icon vocabulary (same
-    // two-pass thick-stroke-then-thin-stroke trick used nowhere else
-    // yet, but the same "ink border, flat fill" language as every icon).
-    const rayCount = 8;
-    const rayInner = r + 5;
-    const rayOuter = r + 17;
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.lineCap = 'round';
-    for (let i = 0; i < rayCount; i++) {
-      const angle = (i / rayCount) * Math.PI * 2;
-      const x1 = Math.cos(angle) * rayInner, y1 = Math.sin(angle) * rayInner;
-      const x2 = Math.cos(angle) * rayOuter, y2 = Math.sin(angle) * rayOuter;
-      ctx.strokeStyle = '#2b2b2b';
-      ctx.lineWidth = 8;
-      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-      ctx.strokeStyle = '#ffce6b';
-      ctx.lineWidth = 4;
-      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-    }
-    ctx.restore();
-    ctx.fillStyle = '#ffce6b';
-    ctx.strokeStyle = '#2b2b2b';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    // A small warm inner highlight keeps the flat disc from reading as
-    // a dead-flat circle without breaking the two-tone flat-ink style.
-    ctx.save();
-    ctx.globalAlpha *= 0.5;
-    ctx.fillStyle = '#fff1cf';
-    ctx.beginPath();
-    ctx.arc(cx - r * 0.28, cy - r * 0.28, r * 0.4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
-
-  // A true crescent needs boolean subtraction (circle1 minus circle2),
-  // not an evenodd fill — evenodd is XOR, so it was leaving the bite
-  // circle's own non-overlapping half fully filled and outlined too,
-  // which is exactly the "two overlapping rings" look this replaces.
-  // Built once on an offscreen canvas (composite operations like
-  // destination-out/-in apply to the whole canvas, so they need their
-  // own small surface to avoid touching anything already drawn), then
-  // reused every frame as a plain image.
-  let moonSprite = null;
-  function buildMoonSprite(r) {
-    const biteR = r * 1.05;
-    const biteOffsetX = r * 0.85;
-    const biteOffsetY = -r * 0.5;
-    const pad = 4;
-    const size = Math.ceil((r + Math.max(biteOffsetX + biteR, r)) * 2 + pad * 2);
-    const cx = size / 2, cy = size / 2;
-    const biteCx = cx + biteOffsetX, biteCy = cy + biteOffsetY;
-    const off = document.createElement('canvas');
-    off.width = size; off.height = size;
-    const o = off.getContext('2d');
-
-    // 1. Base disc, then erase the bite — correct subtraction.
-    o.fillStyle = '#f6f1e3';
-    o.beginPath(); o.arc(cx, cy, r, 0, Math.PI * 2); o.fill();
-    o.globalCompositeOperation = 'destination-out';
-    o.beginPath(); o.arc(biteCx, biteCy, biteR, 0, Math.PI * 2); o.fill();
-    o.globalCompositeOperation = 'source-over';
-
-    // 2. Outer arc: full circle1 stroke, then erase the part the bite covers.
-    o.strokeStyle = '#2b2b2b'; o.lineWidth = 3;
-    o.beginPath(); o.arc(cx, cy, r, 0, Math.PI * 2); o.stroke();
-    o.globalCompositeOperation = 'destination-out';
-    o.beginPath(); o.arc(biteCx, biteCy, biteR, 0, Math.PI * 2); o.fill();
-    o.globalCompositeOperation = 'source-over';
-
-    // 3. Inner arc: full bite-circle stroke, then keep only the part inside circle1.
-    o.beginPath(); o.arc(biteCx, biteCy, biteR, 0, Math.PI * 2); o.stroke();
-    o.globalCompositeOperation = 'destination-in';
-    o.beginPath(); o.arc(cx, cy, r, 0, Math.PI * 2); o.fill();
-    o.globalCompositeOperation = 'source-over';
-
-    return { canvas: off, size };
-  }
-
-  function drawMoon(cx, cy, r) {
-    if (!moonSprite) moonSprite = buildMoonSprite(r);
-    const { canvas, size } = moonSprite;
-    ctx.drawImage(canvas, cx - size / 2, cy - size / 2);
-    // Two tiny companion stars, the moon's own — distinct from the
-    // background twinkling star field, always right beside it so the
-    // moon never reads as a lone plain shape.
-    const twinkle = 0.6 + 0.4 * Math.sin(elapsed * 2);
-    ctx.save();
-    ctx.globalAlpha *= twinkle;
-    [[-r * 1.9, -r * 0.5, 9], [-r * 1.3, r * 1.0, 6]].forEach(([dx, dy, iconSize]) => {
-      drawIconGlyph(ICON_PATHS.star, cx + dx, cy + dy, iconSize, { fill: '#f6f1e3', stroke: '#2b2b2b', lineWidth: 1.4 });
-    });
-    ctx.restore();
-  }
-
-  function drawCelestialBody() {
-    const { body, cx, cy, alpha } = celestialArc();
-    const r = 26;
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    ctx.lineJoin = 'round';
-    if (body === 'sun') drawSun(cx, cy, r);
-    else drawMoon(cx, cy, r);
-    ctx.restore();
-  }
-
   function drawPhaseTint(darkness) {
     if (darkness <= 0) return;
     ctx.save();
@@ -1327,7 +1192,6 @@
       drawDecor();
       drawCat();
       drawPlayer();
-      SkinEffects.draw(ctx, SkinStore.getEquipped(), PLAYER_RIGHT_X - GIRL_H * 0.32, player.y - GIRL_H * 0.5, player.y - GIRL_H, elapsed, true);
     } else {
       drawBackground();
       drawDecor();
@@ -1337,11 +1201,9 @@
       drawCat();
       drawPlayer();
       if (shieldActive) drawShieldHalo();
-      SkinEffects.draw(ctx, SkinStore.getEquipped(), PLAYER_RIGHT_X - GIRL_H * 0.32, player.y - GIRL_H * 0.5, player.y - GIRL_H, elapsed, false);
       const darkness = currentDarkness();
       drawPhaseTint(darkness);
       drawStars(darkness);
-      drawCelestialBody();
     }
     Particles.draw(ctx);
     ctx.restore();

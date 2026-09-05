@@ -12,8 +12,10 @@
 // available. (v2, 2026-09-05: added js/skins.js + js/skin-effects.js to
 // the precache list, and switched code files to network-first — v1's
 // cache-first-forever strategy meant nothing published after a user's
-// first visit ever reached their already-installed copy.)
-const CACHE_NAME = 'mariana-runner-v2';
+// first visit ever reached their already-installed copy. v3, 2026-09-05:
+// removed js/skin-effects.js — it no longer exists, and cache.addAll()
+// fails its entire install if even one precached URL 404s.)
+const CACHE_NAME = 'mariana-runner-v3';
 const APP_SHELL = [
   './',
   './index.html',
@@ -22,7 +24,6 @@ const APP_SHELL = [
   './js/particles.js',
   './js/skins.js',
   './js/sprites.js',
-  './js/skin-effects.js',
   './js/audio.js',
   './js/game.js',
   './assets/favicon.svg',
