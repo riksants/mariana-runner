@@ -186,6 +186,14 @@
   const RUN_CYCLE_SECONDS_MIN = 0.22;
   const FOOTSTRIKE_FRAMES = new Set([2, 8]);
 
+  // Jump input buffer: a press that lands slightly before touchdown (easy
+  // to do on a touchscreen, or just anticipating the landing) used to be
+  // silently dropped. Buffered presses fire the instant the player lands
+  // instead, within this window. No coyote-time companion — the ground
+  // here is one continuous line with no ledges to walk off, so there's
+  // no "just left the ground" moment for coyote-time to cover.
+  const JUMP_BUFFER_WINDOW = 0.12;
+
   // ---------------------------------------------------------
   // Power-ups — drawn as flat ink-on-paper badges (the same visual
   // register as the mute/pause icon buttons), never as illustrated
@@ -280,6 +288,8 @@
     squashT: 0, // seconds since last squash/stretch trigger (landing/takeoff)
     squashKind: null, // 'takeoff' | 'land'
   };
+
+  let jumpBufferTimer = 0;
 
   let idleFrame = 0;
   let idleTimer = 0;
@@ -624,6 +634,15 @@
   // ---------------------------------------------------------
   // Input handling
   // ---------------------------------------------------------
+  function performGroundJump() {
+    player.jumping = true;
+    player.vy = JUMP_VELOCITY;
+    player.airTimer = 0;
+    player.squashT = 0;
+    player.squashKind = 'takeoff';
+    AudioMgr.jump();
+  }
+
   function tryJump() {
     if (state === 'start' || state === 'gameover') {
       startGame();
@@ -631,12 +650,7 @@
     }
     if (state !== 'playing') return;
     if (!player.jumping) {
-      player.jumping = true;
-      player.vy = JUMP_VELOCITY;
-      player.airTimer = 0;
-      player.squashT = 0;
-      player.squashKind = 'takeoff';
-      AudioMgr.jump();
+      performGroundJump();
     } else if (doubleJumpActive && airJumpsUsed < 1) {
       player.vy = JUMP_VELOCITY * 0.82;
       player.airTimer = 0;
@@ -645,6 +659,9 @@
       player.squashKind = 'takeoff';
       AudioMgr.jump();
       Particles.dust(PLAYER_RIGHT_X - 60, player.y - 20, { count: 6 });
+    } else {
+      // Pressed a little early — honor it the instant Mariana lands.
+      jumpBufferTimer = JUMP_BUFFER_WINDOW;
     }
   }
 
@@ -743,6 +760,7 @@
     multiplierTimer = 0;
     obstacleStreak = 0;
     recordBrokenThisRun = false;
+    jumpBufferTimer = 0;
     updateStatusBadges();
     scheduleNextSpawn();
     scheduleNextDecor();
@@ -918,6 +936,7 @@
       doubleJumpTimer -= dt;
       if (doubleJumpTimer <= 0) { doubleJumpTimer = 0; doubleJumpActive = false; updateStatusBadges(); }
     }
+    if (jumpBufferTimer > 0) jumpBufferTimer -= dt;
     updateStatusTimers();
 
     // --- player physics ---
@@ -937,6 +956,10 @@
         AudioMgr.land();
         const px = PLAYER_RIGHT_X - PLAYER_HITBOX.width - PLAYER_HITBOX.rightInset + PLAYER_HITBOX.width / 2;
         Particles.dust(px, GROUND_Y, { count: 5 });
+      }
+      if (jumpBufferTimer > 0) {
+        jumpBufferTimer = 0;
+        performGroundJump();
       }
     }
     if (player.squashKind) {

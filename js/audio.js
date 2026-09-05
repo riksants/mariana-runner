@@ -12,6 +12,8 @@ const AudioMgr = (() => {
   let master = null;
   let muted = localStorage.getItem(MUTE_KEY) === '1';
   let ambientNodes = null;
+  let melodyPlaying = false;
+  let melodyTimeoutId = null;
 
   function getCtx() {
     if (!ctx) {
@@ -85,7 +87,36 @@ const AudioMgr = (() => {
     } catch (e) { /* ignore */ }
   }
 
+  // A short, quiet pentatonic riff looping under the drone pad — the
+  // ambient pad alone is just a background wash with no melodic hook,
+  // which read as flat compared to the arcade energy of the SFX. Reuses
+  // tone() (synthesized, no audio files) and schedules a whole phrase's
+  // worth of notes at once via Web Audio's own currentTime + delay, so
+  // note timing doesn't drift with JS timer jitter — only the trigger
+  // for the *next* phrase goes through setTimeout.
+  const MELODY_NOTES = [523.25, 587.33, 659.25, 783.99, 880.00, 783.99, 659.25, 587.33]; // C5 D5 E5 G5 A5 G5 E5 D5
+  const MELODY_STEP = 0.28; // seconds per note
+  function scheduleMelodyPhrase() {
+    if (!melodyPlaying) return;
+    MELODY_NOTES.forEach((freq, i) => {
+      tone(freq, freq, MELODY_STEP * 0.55, 'triangle', 0.045, i * MELODY_STEP);
+    });
+    melodyTimeoutId = setTimeout(scheduleMelodyPhrase, MELODY_NOTES.length * MELODY_STEP * 1000);
+  }
+
+  function startMelody() {
+    if (melodyPlaying || REDUCE_MOTION_AUDIO()) return;
+    melodyPlaying = true;
+    scheduleMelodyPhrase();
+  }
+
+  function stopMelody() {
+    melodyPlaying = false;
+    if (melodyTimeoutId) { clearTimeout(melodyTimeoutId); melodyTimeoutId = null; }
+  }
+
   function startAmbient() {
+    startMelody();
     if (ambientNodes || REDUCE_MOTION_AUDIO()) return;
     try {
       const ac = getCtx();
@@ -129,6 +160,7 @@ const AudioMgr = (() => {
   }
 
   function stopAmbient() {
+    stopMelody();
     if (!ambientNodes) return;
     const ac = getCtx();
     const { gain, oscA, oscB, lfo } = ambientNodes;
