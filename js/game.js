@@ -201,14 +201,19 @@
   // Day/dusk/night lighting cycle — a continuous color-multiply wash
   // over the existing art (plus a fading procedural star field), so
   // "new phases" don't require any new illustrated scenery. Darkness
-  // is a smooth function of score (not real time) — the user found
-  // the time-based version too slow and asked for a fixed 3000-point
-  // cadence instead: it rises from morning through dusk into night,
-  // then falls back through dawn into morning again. There is no
-  // on-screen label for any of it — only the lighting and sky are
-  // meant to communicate the change.
+  // is a smooth function of real elapsed time, not score: score-based
+  // cycling was tried, but score accrues faster as the run speeds up
+  // (speed ramps from 300 to 700 game-units/sec while score = speed/6.5
+  // per second), so the exact same "3000 points" cycle took ~65s early
+  // in a run and sped up to under 30s once the run reached max speed —
+  // that acceleration is what read as the sun/moon "jumping" abruptly.
+  // Real time doesn't accelerate with the run, so the cycle now has one
+  // constant, slow, natural pace regardless of how well the run is
+  // going, and a short match only ever sees a small, gentle slice of it.
+  // There is no on-screen label for any of it — only the lighting and
+  // sky are meant to communicate the change.
   // ---------------------------------------------------------
-  const PHASE_CYCLE_SCORE = 3000; // one full morning→night→morning cycle, in score points
+  const PHASE_CYCLE_SECONDS = 600; // one full morning→night→morning cycle, in real seconds (10 minutes)
   const TINT_STOPS = [
     { r: 255, g: 140, b: 60, a: 0 },     // darkness 0.0 — broad daylight, no wash
     { r: 255, g: 140, b: 60, a: 0.16 },  // darkness 0.5 — dusk/dawn amber
@@ -222,8 +227,8 @@
   }));
 
   function cyclePosition() {
-    const span = ((score % PHASE_CYCLE_SCORE) + PHASE_CYCLE_SCORE) % PHASE_CYCLE_SCORE;
-    return span / PHASE_CYCLE_SCORE;
+    const span = ((elapsed % PHASE_CYCLE_SECONDS) + PHASE_CYCLE_SECONDS) % PHASE_CYCLE_SECONDS;
+    return span / PHASE_CYCLE_SECONDS;
   }
 
   // Smooth 0→1→0 breathing curve across one full cycle: 0 at sunrise/
@@ -1036,44 +1041,115 @@
     ctx.restore();
   }
 
+  function drawSun(cx, cy, r) {
+    // Classic flat sun glyph: a ring of thick ink-outlined rays behind
+    // the disc, matching the game's ink-on-paper icon vocabulary (same
+    // two-pass thick-stroke-then-thin-stroke trick used nowhere else
+    // yet, but the same "ink border, flat fill" language as every icon).
+    const rayCount = 8;
+    const rayInner = r + 5;
+    const rayOuter = r + 17;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.lineCap = 'round';
+    for (let i = 0; i < rayCount; i++) {
+      const angle = (i / rayCount) * Math.PI * 2;
+      const x1 = Math.cos(angle) * rayInner, y1 = Math.sin(angle) * rayInner;
+      const x2 = Math.cos(angle) * rayOuter, y2 = Math.sin(angle) * rayOuter;
+      ctx.strokeStyle = '#2b2b2b';
+      ctx.lineWidth = 8;
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+      ctx.strokeStyle = '#ffce6b';
+      ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    }
+    ctx.restore();
+    ctx.fillStyle = '#ffce6b';
+    ctx.strokeStyle = '#2b2b2b';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    // A small warm inner highlight keeps the flat disc from reading as
+    // a dead-flat circle without breaking the two-tone flat-ink style.
+    ctx.save();
+    ctx.globalAlpha *= 0.5;
+    ctx.fillStyle = '#fff1cf';
+    ctx.beginPath();
+    ctx.arc(cx - r * 0.28, cy - r * 0.28, r * 0.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // A true crescent needs boolean subtraction (circle1 minus circle2),
+  // not an evenodd fill — evenodd is XOR, so it was leaving the bite
+  // circle's own non-overlapping half fully filled and outlined too,
+  // which is exactly the "two overlapping rings" look this replaces.
+  // Built once on an offscreen canvas (composite operations like
+  // destination-out/-in apply to the whole canvas, so they need their
+  // own small surface to avoid touching anything already drawn), then
+  // reused every frame as a plain image.
+  let moonSprite = null;
+  function buildMoonSprite(r) {
+    const biteR = r * 1.05;
+    const biteOffsetX = r * 0.85;
+    const biteOffsetY = -r * 0.5;
+    const pad = 4;
+    const size = Math.ceil((r + Math.max(biteOffsetX + biteR, r)) * 2 + pad * 2);
+    const cx = size / 2, cy = size / 2;
+    const biteCx = cx + biteOffsetX, biteCy = cy + biteOffsetY;
+    const off = document.createElement('canvas');
+    off.width = size; off.height = size;
+    const o = off.getContext('2d');
+
+    // 1. Base disc, then erase the bite — correct subtraction.
+    o.fillStyle = '#f6f1e3';
+    o.beginPath(); o.arc(cx, cy, r, 0, Math.PI * 2); o.fill();
+    o.globalCompositeOperation = 'destination-out';
+    o.beginPath(); o.arc(biteCx, biteCy, biteR, 0, Math.PI * 2); o.fill();
+    o.globalCompositeOperation = 'source-over';
+
+    // 2. Outer arc: full circle1 stroke, then erase the part the bite covers.
+    o.strokeStyle = '#2b2b2b'; o.lineWidth = 3;
+    o.beginPath(); o.arc(cx, cy, r, 0, Math.PI * 2); o.stroke();
+    o.globalCompositeOperation = 'destination-out';
+    o.beginPath(); o.arc(biteCx, biteCy, biteR, 0, Math.PI * 2); o.fill();
+    o.globalCompositeOperation = 'source-over';
+
+    // 3. Inner arc: full bite-circle stroke, then keep only the part inside circle1.
+    o.beginPath(); o.arc(biteCx, biteCy, biteR, 0, Math.PI * 2); o.stroke();
+    o.globalCompositeOperation = 'destination-in';
+    o.beginPath(); o.arc(cx, cy, r, 0, Math.PI * 2); o.fill();
+    o.globalCompositeOperation = 'source-over';
+
+    return { canvas: off, size };
+  }
+
+  function drawMoon(cx, cy, r) {
+    if (!moonSprite) moonSprite = buildMoonSprite(r);
+    const { canvas, size } = moonSprite;
+    ctx.drawImage(canvas, cx - size / 2, cy - size / 2);
+    // Two tiny companion stars, the moon's own — distinct from the
+    // background twinkling star field, always right beside it so the
+    // moon never reads as a lone plain shape.
+    const twinkle = 0.6 + 0.4 * Math.sin(elapsed * 2);
+    ctx.save();
+    ctx.globalAlpha *= twinkle;
+    [[-r * 1.9, -r * 0.5, 9], [-r * 1.3, r * 1.0, 6]].forEach(([dx, dy, iconSize]) => {
+      drawIconGlyph(ICON_PATHS.star, cx + dx, cy + dy, iconSize, { fill: '#f6f1e3', stroke: '#2b2b2b', lineWidth: 1.4 });
+    });
+    ctx.restore();
+  }
+
   function drawCelestialBody() {
     const { body, cx, cy, alpha } = celestialArc();
     const r = 26;
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.lineJoin = 'round';
-    ctx.strokeStyle = '#2b2b2b';
-    ctx.lineWidth = 3;
-    if (body === 'sun') {
-      ctx.fillStyle = '#ffce6b';
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-    } else {
-      const biteR = r * 1.05;
-      const biteCx = cx + r * 0.85;
-      const biteCy = cy - r * 0.5;
-      const path = new Path2D();
-      path.arc(cx, cy, r, 0, Math.PI * 2);
-      path.moveTo(biteCx + biteR, biteCy);
-      path.arc(biteCx, biteCy, biteR, 0, Math.PI * 2);
-      ctx.fillStyle = '#f3ead9';
-      ctx.fill(path, 'evenodd');
-      // Clip to the crescent silhouette before stroking each full circle,
-      // so only the two arcs that actually bound the crescent get inked —
-      // stroking the raw circles would otherwise outline the bitten-off
-      // part too.
-      ctx.save();
-      ctx.clip(path, 'evenodd');
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(biteCx, biteCy, biteR, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-    }
+    if (body === 'sun') drawSun(cx, cy, r);
+    else drawMoon(cx, cy, r);
     ctx.restore();
   }
 
