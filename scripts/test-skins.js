@@ -42,6 +42,14 @@ assert(JSON.stringify(sandbox.SkinStore.getUnlocked()) === '["normal"]', 'starts
 assert(sandbox.SkinStore.getEquipped() === 'normal', 'starts with normal equipped');
 assert(sandbox.SkinStore.isUnlocked('princesa') === false, 'princesa starts locked');
 
+const skinOrder = sandbox.SKIN_DEFS.map((s) => s.id);
+assert(
+  JSON.stringify(skinOrder) === JSON.stringify(['normal', 'princesa', 'volei', 'pijama', 'macaca', 'gold', 'noiva']),
+  'wardrobe order is normal-princesa-volei-pijama-macaca-gold-noiva'
+);
+assert(sandbox.skinById('macaca').price === 2500, 'macaca costs 2500 coins');
+assert(sandbox.skinById('macaca').special === undefined, 'macaca is not flagged special (that stays reserved for noiva)');
+
 let res = sandbox.SkinStore.purchase('princesa');
 assert(res.ok === false && res.reason === 'insufficient-coins', 'purchase fails with 0 coins');
 assert(sandbox.SkinStore.getCoins() === 0, 'coins unchanged after failed purchase');

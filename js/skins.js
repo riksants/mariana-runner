@@ -11,6 +11,7 @@ const SKIN_DEFS = [
   { id: 'princesa', name: 'Mariana Princesa', price: 500,  icon: 'crown' },
   { id: 'volei',    name: 'Mariana Vôlei',    price: 1000, icon: 'volleyball' },
   { id: 'pijama',   name: 'Mariana Pijama',   price: 1500, icon: 'moon' },
+  { id: 'macaca',   name: 'Mariana Macaca',   price: 2500, icon: 'monkey' },
   { id: 'gold',     name: 'Mariana Gold',     price: 3000, icon: 'gem' },
   { id: 'noiva',    name: 'Mariana Noiva',    price: 5000, icon: 'ring', special: true },
 ];
