@@ -168,6 +168,14 @@ const AudioMgr = (() => {
       tone(660, 660, 0.07, 'square', 0.07);
       tone(880, 880, 0.09, 'square', 0.07, 0.07);
     },
+    // Distinct from milestone() (square/time-based): a softer triangle-wave
+    // ascending motif for clearing a streak of obstacles — rewards dodging
+    // skill specifically, not just elapsed play time.
+    streak() {
+      tone(740, 740, 0.05, 'triangle', 0.06);
+      tone(988, 988, 0.05, 'triangle', 0.06, 0.05);
+      tone(1318, 1318, 0.08, 'triangle', 0.06, 0.10);
+    },
     record() {
       tone(523, 523, 0.09, 'square', 0.08);
       tone(659, 659, 0.09, 'square', 0.08, 0.09);

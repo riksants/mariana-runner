@@ -314,6 +314,16 @@
   let lastShownStarSeconds = null;
   let lastShownJumpSeconds = null;
 
+  // Obstacle-clear streak: a quiet, no-HUD flourish that celebrates
+  // skilled play specifically (as opposed to lucky powerup pickups),
+  // distinct from the score milestone pulse.
+  let obstacleStreak = 0;
+  const STREAK_MILESTONE = 10;
+
+  // Fires once per run, the instant the live score first overtakes the
+  // previous best — a mid-run payoff instead of only at game over.
+  let recordBrokenThisRun = false;
+
   let GIRL_RUN_FRAMES, GIRL_JUMP_FRAMES, GIRL_IDLE_FRAMES;
   let CAT_RUN_FRAMES, CAT_JUMP_FRAMES, CAT_IDLE_FRAMES;
 
@@ -346,11 +356,17 @@
     return speed * AIR_TIME * 0.72;
   }
 
+  // Thresholds retuned 2026-09-05: at the original 70/150/260, every
+  // obstacle type was already unlocked within the first ~5 seconds of any
+  // run (score climbs fast — see SPEED_PER_POINT above), so there was
+  // nothing new to react to for the rest of a long run. Spaced out so
+  // variety keeps revealing itself over the first ~35-40s instead —
+  // SPEED_PER_POINT and the reaction-time floor are untouched.
   function unlockedTypes() {
     const types = ['cactusSmall'];
-    if (score >= 70) types.push('cactusBig');
-    if (score >= 150) types.push('rock');
-    if (score >= 260) types.push('rockSmall');
+    if (score >= 500) types.push('cactusBig');
+    if (score >= 1500) types.push('rock');
+    if (score >= 3500) types.push('rockSmall');
     return types;
   }
 
@@ -381,6 +397,7 @@
     const speed = currentSpeed();
     const types = unlockedTypes();
     const startX = W + 10;
+    let groupEndX = startX;
 
     if (Math.random() < clusterChance()) {
       const maxW = maxClusterWidth(speed);
@@ -402,10 +419,35 @@
         obstacles.push({ x: cursor, w: p.dims.w, h: p.dims.h, type: p.type });
         cursor += p.dims.w + gapBetween;
       });
+      groupEndX = cursor;
     } else {
       const type = pickObstacleType(types);
       const dims = obstacleDims(type);
       obstacles.push({ x: startX, w: dims.w, h: dims.h, type });
+      groupEndX = startX + dims.w;
+    }
+    maybeSpawnRewardCoins(groupEndX);
+  }
+
+  // Reward coins: sit just behind an obstacle group, inside the arc a
+  // clearing jump already makes, so a well-timed dodge sometimes doubles
+  // as a coin grab instead of coins living on a totally unrelated
+  // schedule from the obstacles themselves. Purely additive — the
+  // ambient coin-cluster timer (scheduleNextCoinCluster) is unchanged.
+  const REWARD_COIN_CHANCE = 0.45;
+  const REWARD_COIN_GAP = 46;
+  function maybeSpawnRewardCoins(afterX) {
+    if (Math.random() >= REWARD_COIN_CHANCE) return;
+    const baseY = GROUND_Y - 45 - Math.random() * 25; // inside most clearing jumps' arc, not just the apex
+    for (let i = 0; i < COIN_CLUSTER_SIZE; i++) {
+      const arc = Math.sin((i / (COIN_CLUSTER_SIZE - 1)) * Math.PI) * 14;
+      coins.push({
+        x: afterX + REWARD_COIN_GAP + i * 22,
+        baseY: baseY - arc,
+        w: COIN_SIZE,
+        h: COIN_SIZE,
+        bobPhase: Math.random() * Math.PI * 2,
+      });
     }
   }
 
@@ -462,6 +504,36 @@
     updateCoinsHud();
     AudioMgr.coin();
     Particles.dust(x, y, { count: 4, color: 'rgba(230,180,60,' });
+  }
+
+  // Called once per obstacle successfully cleared (see the obstacle
+  // cleanup step in update()). Crossing a multiple of STREAK_MILESTONE
+  // fires a small celebration distinct from the score-milestone pulse —
+  // this one rewards dodging skill specifically, not just time played.
+  function registerObstaclesCleared(count) {
+    const prevMilestone = Math.floor(obstacleStreak / STREAK_MILESTONE);
+    obstacleStreak += count;
+    const newMilestone = Math.floor(obstacleStreak / STREAK_MILESTONE);
+    if (newMilestone > prevMilestone) celebrateStreak();
+  }
+
+  function celebrateStreak() {
+    const cx = PLAYER_RIGHT_X - GIRL_H * 0.32;
+    const cy = player.y - GIRL_H * 0.75;
+    Particles.sparkle(cx, cy, { color: '#e8b23d', shape: 'star', size: 11, spread: 10 });
+    Particles.sparkle(cx - 16, cy - 8, { color: '#a83f1f', shape: 'star', size: 8, spread: 10 });
+    Particles.sparkle(cx + 14, cy - 4, { color: '#e8b23d', shape: 'star', size: 8, spread: 10 });
+    AudioMgr.streak();
+  }
+
+  function celebrateNewRecordMidRun(flooredScore) {
+    highScore = flooredScore;
+    localStorage.setItem('marianaRunnerHighScore', String(highScore));
+    updateHud();
+    const px = PLAYER_RIGHT_X - PLAYER_HITBOX.width / 2;
+    Particles.burst(px, player.y - GIRL_H * 0.6);
+    AudioMgr.record();
+    announce(`Novo recorde: ${flooredScore} pontos!`);
   }
 
   function spawnPowerup() {
@@ -669,6 +741,8 @@
     airJumpsUsed = 0;
     scoreMultiplier = 1;
     multiplierTimer = 0;
+    obstacleStreak = 0;
+    recordBrokenThisRun = false;
     updateStatusBadges();
     scheduleNextSpawn();
     scheduleNextDecor();
@@ -831,6 +905,11 @@
       pulseScore();
     }
 
+    if (!recordBrokenThisRun && highScore > 0 && flooredScore > highScore) {
+      recordBrokenThisRun = true;
+      celebrateNewRecordMidRun(flooredScore);
+    }
+
     if (multiplierTimer > 0) {
       multiplierTimer -= dt;
       if (multiplierTimer <= 0) { multiplierTimer = 0; scoreMultiplier = 1; updateStatusBadges(); }
@@ -891,6 +970,12 @@
       scheduleNextSpawn();
     }
     for (const o of obstacles) o.x -= speed * dt;
+    // An obstacle only ever reaches this off-screen threshold by having
+    // scrolled all the way past the player without colliding — a hit
+    // ends the run (see below) and freezes further movement, so every
+    // removal here is a genuinely cleared obstacle.
+    const clearedCount = obstacles.reduce((n, o) => n + (o.x + o.w <= -10 ? 1 : 0), 0);
+    if (clearedCount > 0) registerObstaclesCleared(clearedCount);
     obstacles = obstacles.filter(o => o.x + o.w > -10);
 
     // --- decor ---
@@ -965,6 +1050,7 @@
       if (px < ox + ow && px + pw > ox && hitboxY < oy + oh && hitboxY + hitboxH > oy) {
         if (shieldActive) {
           shieldActive = false;
+          obstacleStreak = 0;
           updateStatusBadges();
           AudioMgr.shieldBreak();
           ScreenShake.hit(0.5);
@@ -972,6 +1058,7 @@
           obstacles = obstacles.filter(other => other !== o);
           break;
         }
+        obstacleStreak = 0;
         ScreenShake.hit(1);
         Particles.dust(px + pw / 2, hitboxY + hitboxH / 2, { count: 8, color: 'rgba(90,80,68,' });
         endGame();
