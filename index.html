@@ -129,7 +129,21 @@
     // PWA install support: offline app-shell cache.
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js').catch(() => {});
+        // updateViaCache: 'none' — always bypass the HTTP cache when
+        // checking sw.js itself for changes, so a stale CDN-cached copy
+        // of sw.js can't hide a real update from the browser.
+        navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
+          .then((reg) => reg.update().catch(() => {}))
+          .catch(() => {});
+      });
+      // When a new service worker takes over (an update was found and
+      // activated), reload once so the page picks up the fresh code
+      // immediately instead of waiting for the next manual visit.
+      let reloadedForUpdate = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (reloadedForUpdate) return;
+        reloadedForUpdate = true;
+        location.reload();
       });
     }
     // Best-effort landscape lock for the installed app (Android/Chrome only —
