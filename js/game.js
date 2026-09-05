@@ -192,14 +192,14 @@
   // Day/dusk/night lighting cycle — a continuous color-multiply wash
   // over the existing art (plus a fading procedural star field), so
   // "new phases" don't require any new illustrated scenery. Darkness
-  // is a smooth function of real elapsed time (not score), so the
-  // cycle never speeds up as the run gets faster/harder: it rises
-  // from morning through dusk into night, then falls back through
-  // dawn into morning again, slowly and continuously, like the real
-  // thing. There is no on-screen label for any of it — only the
-  // lighting and sky are meant to communicate the change.
+  // is a smooth function of score (not real time) — the user found
+  // the time-based version too slow and asked for a fixed 3000-point
+  // cadence instead: it rises from morning through dusk into night,
+  // then falls back through dawn into morning again. There is no
+  // on-screen label for any of it — only the lighting and sky are
+  // meant to communicate the change.
   // ---------------------------------------------------------
-  const PHASE_CYCLE_SECONDS = 360; // one full morning→night→morning cycle, in real seconds
+  const PHASE_CYCLE_SCORE = 3000; // one full morning→night→morning cycle, in score points
   const TINT_STOPS = [
     { r: 255, g: 140, b: 60, a: 0 },     // darkness 0.0 — broad daylight, no wash
     { r: 255, g: 140, b: 60, a: 0.16 },  // darkness 0.5 — dusk/dawn amber
@@ -213,8 +213,8 @@
   }));
 
   function cyclePosition() {
-    const span = ((elapsed % PHASE_CYCLE_SECONDS) + PHASE_CYCLE_SECONDS) % PHASE_CYCLE_SECONDS;
-    return span / PHASE_CYCLE_SECONDS;
+    const span = ((score % PHASE_CYCLE_SCORE) + PHASE_CYCLE_SCORE) % PHASE_CYCLE_SCORE;
+    return span / PHASE_CYCLE_SCORE;
   }
 
   // Smooth 0→1→0 breathing curve across one full cycle: 0 at sunrise/
