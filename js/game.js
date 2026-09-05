@@ -41,6 +41,13 @@
     pause: document.getElementById('overlay-pause'),
     gameover: document.getElementById('overlay-gameover'),
   };
+  const overlayWardrobe = document.getElementById('overlay-wardrobe');
+  const wardrobeGrid = document.getElementById('wardrobe-grid');
+  const wardrobeCoinsValue = document.getElementById('wardrobe-coins-value');
+  const menuCoinsValue = document.getElementById('menu-coins-value');
+  const btnWardrobe = document.getElementById('btn-wardrobe');
+  const btnWardrobeGameover = document.getElementById('btn-wardrobe-gameover');
+  const btnWardrobeBack = document.getElementById('btn-wardrobe-back');
   const btnStart = document.getElementById('btn-start');
   const btnRestart = document.getElementById('btn-restart');
   const btnResume = document.getElementById('btn-resume');
@@ -726,7 +733,39 @@
 
   function updateCoinsHud() {
     hudCoinsValue.textContent = String(coinBalance);
+    menuCoinsValue.textContent = String(coinBalance);
+    wardrobeCoinsValue.textContent = String(coinBalance);
   }
+
+  // renderWardrobe() populates #wardrobe-grid — defined further down
+  // (Wardrobe card rendering section). Declared with `function` there
+  // so it's hoisted and callable from here regardless of file order,
+  // exactly like every other forward reference already in this file
+  // (e.g. AudioMgr, Particles).
+  function openWardrobe() {
+    renderWardrobe();
+    overlayWardrobe.hidden = false;
+  }
+
+  function closeWardrobe() {
+    overlayWardrobe.hidden = true;
+  }
+
+  btnWardrobe.addEventListener('click', (e) => {
+    e.stopPropagation();
+    AudioMgr.uiClick();
+    openWardrobe();
+  });
+  btnWardrobeGameover.addEventListener('click', (e) => {
+    e.stopPropagation();
+    AudioMgr.uiClick();
+    openWardrobe();
+  });
+  btnWardrobeBack.addEventListener('click', (e) => {
+    e.stopPropagation();
+    AudioMgr.uiClick();
+    closeWardrobe();
+  });
 
   // ---------------------------------------------------------
   // Update

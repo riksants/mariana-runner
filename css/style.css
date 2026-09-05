@@ -367,3 +367,140 @@ html, body {
 @media (prefers-reduced-motion: reduce) {
   #hud-score-value.pulse { animation: none; }
 }
+
+/* ---------- Guarda-Roupa (wardrobe) ---------- */
+#menu-coins,
+#wardrobe-coins {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-display);
+  font-size: clamp(10px, 2.2vmin, 14px);
+  color: var(--ink);
+}
+
+#menu-coins .icon,
+#wardrobe-coins .icon {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  flex: none;
+}
+
+.overlay--wardrobe {
+  flex-direction: column;
+  justify-content: flex-start;
+  z-index: 3;
+  background: var(--paper);
+  gap: clamp(8px, 1.8vmin, 14px);
+}
+
+#wardrobe-header {
+  width: 100%;
+  max-width: 640px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: none;
+}
+
+#wardrobe-grid {
+  width: 100%;
+  max-width: 640px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: clamp(8px, 1.6vmin, 12px);
+  padding: 4px 2px 8px;
+}
+
+.skin-card {
+  background: var(--paper-dim);
+  border: 2px solid var(--ink);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+}
+
+.skin-card-preview {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.skin-card-preview img {
+  height: 82%;
+  width: auto;
+}
+
+.skin-card-badge {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 18px;
+  height: 18px;
+  background: var(--paper);
+  border: 1.5px solid var(--ink);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink);
+}
+
+.skin-card-badge svg {
+  width: 11px;
+  height: 11px;
+}
+
+.skin-card-name {
+  font-family: var(--font-display);
+  font-size: clamp(8px, 1.8vmin, 10px);
+  color: var(--ink);
+  line-height: 1.4;
+}
+
+.skin-card-price {
+  font-family: var(--font-body);
+  font-size: clamp(11px, 2.4vmin, 15px);
+  color: var(--muted);
+}
+
+.skin-card-btn {
+  width: 100%;
+  font-family: var(--font-display);
+  font-size: clamp(7px, 1.6vmin, 9px);
+  padding: 6px 4px;
+  border: 2px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.skin-card-btn:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.skin-card-btn.is-equipped {
+  background: var(--ink);
+  color: var(--paper);
+  opacity: 1;
+}
+
+.skin-card-btn.is-buyable {
+  background: var(--accent);
+  color: var(--paper);
+  border-color: var(--accent);
+}

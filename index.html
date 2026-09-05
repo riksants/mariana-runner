@@ -70,6 +70,11 @@
       <div id="overlay-start" class="overlay">
         <h1 class="title">MARIANA RUNNER</h1>
         <button type="button" id="btn-start" class="pixel-btn pixel-btn--primary">COMEÇAR</button>
+        <div id="menu-coins">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><line x1="12" y1="7.5" x2="12" y2="16.5" stroke="currentColor" stroke-width="1.6"/></svg>
+          <span id="menu-coins-value">0</span>
+        </div>
+        <button type="button" id="btn-wardrobe" class="pixel-btn">GUARDA-ROUPA</button>
         <p class="instruction">ESPAÇO / TOQUE PARA PULAR</p>
       </div>
 
@@ -78,6 +83,7 @@
         <p class="score-line">Pontuação: <span id="final-score">0</span></p>
         <p class="record-badge" id="record-badge" hidden>NOVO RECORDE!</p>
         <button type="button" id="btn-restart" class="pixel-btn pixel-btn--primary">JOGAR NOVAMENTE</button>
+        <button type="button" id="btn-wardrobe-gameover" class="pixel-btn">GUARDA-ROUPA</button>
         <p class="instruction">ESPAÇO PARA REINICIAR</p>
       </div>
 
@@ -89,6 +95,18 @@
 
       <div id="overlay-loading" class="overlay">
         <p class="loading-label">CARREGANDO<span id="loading-dots">...</span></p>
+      </div>
+
+      <div id="overlay-wardrobe" class="overlay overlay--wardrobe" hidden>
+        <div id="wardrobe-header">
+          <h2 class="title title--small">GUARDA-ROUPA</h2>
+          <div id="wardrobe-coins">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><line x1="12" y1="7.5" x2="12" y2="16.5" stroke="currentColor" stroke-width="1.6"/></svg>
+            <span id="wardrobe-coins-value">0</span>
+          </div>
+        </div>
+        <div id="wardrobe-grid"></div>
+        <button type="button" id="btn-wardrobe-back" class="pixel-btn">VOLTAR</button>
       </div>
 
       <p id="rotate-hint">
