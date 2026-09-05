@@ -24,6 +24,7 @@
   const hud = document.getElementById('hud');
   const hudScoreValue = document.getElementById('hud-score-value');
   const hudHiscoreValue = document.getElementById('hud-hiscore-value');
+  const hudCoinsValue = document.getElementById('hud-coins-value');
   const tapHint = document.getElementById('tap-hint');
   const srAnnouncer = document.getElementById('sr-announcer');
   const statusBadges = {
@@ -723,6 +724,10 @@
     hudHiscoreValue.textContent = String(highScore).padStart(5, '0');
   }
 
+  function updateCoinsHud() {
+    hudCoinsValue.textContent = String(coinBalance);
+  }
+
   // ---------------------------------------------------------
   // Update
   // ---------------------------------------------------------
@@ -1198,6 +1203,7 @@
   }, 350);
 
   updateHud();
+  updateCoinsHud();
   Promise.all([loadAllSprites(), loadSkinSprites()]).then(() => {
     clearInterval(loadingTimer);
     GIRL_RUN_FRAMES = framesFromPrefix('girlRun', RUN_FRAME_COUNT);

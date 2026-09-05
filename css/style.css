@@ -88,6 +88,25 @@ html, body {
   letter-spacing: 1px;
 }
 
+#hud-coins {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  font-family: var(--font-display);
+  font-size: clamp(8px, 1.7vmin, 11px);
+  color: var(--ink);
+}
+
+#hud-coins .icon {
+  width: 11px;
+  height: 11px;
+  fill: none;
+  stroke: currentColor;
+  flex: none;
+}
+
 /* ---------- Active power-up status badges ---------- */
 #status-effects {
   margin-top: 6px;
