@@ -1194,14 +1194,21 @@
     return { scaleX: 1 + eased * 0.12, scaleY: 1 - eased * 0.14 };
   }
 
+  function currentGirlFrames() {
+    const skinFrames = SKIN_SPRITE_FRAMES[SkinStore.getEquipped()];
+    if (skinFrames) return skinFrames;
+    return { run: GIRL_RUN_FRAMES, jump: GIRL_JUMP_FRAMES, idle: GIRL_IDLE_FRAMES };
+  }
+
   function drawPlayer() {
+    const frames = currentGirlFrames();
     let img;
     if (state === 'start') {
-      img = GIRL_IDLE_FRAMES[idleFrame];
+      img = frames.idle[idleFrame];
     } else if (player.jumping) {
-      img = GIRL_JUMP_FRAMES[jumpFrameIndex()];
+      img = frames.jump[jumpFrameIndex()];
     } else {
-      img = GIRL_RUN_FRAMES[player.frame];
+      img = frames.run[player.frame];
     }
     drawSpriteRB(ctx, img, PLAYER_RIGHT_X, player.y, GIRL_H, squashScale());
   }
