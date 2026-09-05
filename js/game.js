@@ -1119,7 +1119,7 @@
   }, 350);
 
   updateHud();
-  loadAllSprites().then(() => {
+  Promise.all([loadAllSprites(), loadSkinSprites()]).then(() => {
     clearInterval(loadingTimer);
     GIRL_RUN_FRAMES = framesFromPrefix('girlRun', RUN_FRAME_COUNT);
     GIRL_JUMP_FRAMES = framesFromPrefix('girlJump', JUMP_FRAME_COUNT);

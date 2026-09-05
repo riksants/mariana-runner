@@ -108,3 +108,38 @@ function drawSpriteRB(ctx, img, rightX, bottomY, targetH, extra) {
 function spriteWidthForHeight(img, targetH) {
   return img.naturalWidth * (targetH / img.naturalHeight);
 }
+
+// Optional per-skin illustrated art. Missing files are *expected* until
+// real artwork is supplied for a skin — they resolve to null instead of
+// rejecting, so an art-less skin never blocks the game from loading and
+// never throws. game.js falls back to the normal Mariana frames whenever
+// a skin's entry here is null. See assets/sprites/skins/README.md for
+// the exact file layout an artist should follow.
+function loadImageOptional(src) {
+  return loadImage(src).catch(() => null);
+}
+
+const SKIN_SPRITE_FRAMES = {};
+
+function loadSkinSprites() {
+  const runFrames = 12, jumpFrames = 4, idleFrames = 2;
+  const tasks = SKIN_DEFS.filter((s) => s.id !== 'normal').map((skin) => {
+    const load = (prefix, count) => {
+      const paths = [];
+      for (let i = 1; i <= count; i++) {
+        const n = String(i).padStart(2, '0');
+        paths.push(`assets/sprites/skins/${skin.id}/${prefix}_${n}.png`);
+      }
+      return Promise.all(paths.map(loadImageOptional));
+    };
+    return Promise.all([
+      load('girl_run', runFrames),
+      load('girl_jump', jumpFrames),
+      load('girl_idle', idleFrames),
+    ]).then(([run, jump, idle]) => {
+      const complete = [...run, ...jump, ...idle].every(Boolean);
+      SKIN_SPRITE_FRAMES[skin.id] = complete ? { run, jump, idle } : null;
+    });
+  });
+  return Promise.all(tasks);
+}
