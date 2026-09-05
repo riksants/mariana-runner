@@ -767,6 +767,62 @@
     closeWardrobe();
   });
 
+  const SKIN_ICON_SVG = {
+    normal: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>',
+    crown: '<svg viewBox="0 0 24 24"><path d="M4 18h16l-1.5-8-4 3-2.5-5-2.5 5-4-3z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>',
+    volleyball: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 4v16M5 8c3 2 11 2 14 0M5 16c3-2 11-2 14 0" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>',
+    moon: '<svg viewBox="0 0 24 24"><path d="M15 3a9 9 0 1 0 6 15 7 7 0 0 1-6-15z" fill="currentColor"/></svg>',
+    gem: '<svg viewBox="0 0 24 24"><path d="M6 4h12l3 5-9 11L3 9z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>',
+    ring: '<svg viewBox="0 0 24 24"><circle cx="12" cy="15" r="6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 9 9 3h6z" fill="currentColor"/></svg>',
+  };
+
+  function skinCardStatus(id) {
+    if (id === SkinStore.getEquipped()) return 'equipped';
+    if (SkinStore.isUnlocked(id)) return 'owned';
+    return coinBalance >= skinById(id).price ? 'buyable' : 'locked';
+  }
+
+  const SKIN_STATUS_LABEL = { equipped: 'EQUIPADA', owned: 'EQUIPAR', buyable: 'COMPRAR', locked: 'BLOQUEADA' };
+
+  function renderWardrobe() {
+    wardrobeCoinsValue.textContent = String(coinBalance);
+    wardrobeGrid.innerHTML = SKIN_DEFS.map((skin) => {
+      const status = skinCardStatus(skin.id);
+      const btnClass = status === 'equipped' ? 'is-equipped' : status === 'buyable' ? 'is-buyable' : '';
+      const disabled = (status === 'equipped' || status === 'locked') ? 'disabled' : '';
+      const priceLabel = skin.price > 0 ? `${skin.price} MOEDAS` : 'GRÁTIS';
+      return `
+        <div class="skin-card">
+          <div class="skin-card-preview">
+            <img src="assets/sprites/girl_idle_01.png" alt="${skin.name}">
+            <span class="skin-card-badge">${SKIN_ICON_SVG[skin.icon]}</span>
+          </div>
+          <div class="skin-card-name">${skin.name.toUpperCase()}</div>
+          <div class="skin-card-price">${priceLabel}</div>
+          <button type="button" class="skin-card-btn ${btnClass}" data-action="${status}" data-skin-id="${skin.id}" ${disabled}>${SKIN_STATUS_LABEL[status]}</button>
+        </div>`;
+    }).join('');
+  }
+
+  wardrobeGrid.addEventListener('click', (e) => {
+    const btn = e.target.closest('.skin-card-btn');
+    if (!btn || btn.disabled) return;
+    const id = btn.dataset.skinId;
+    const action = btn.dataset.action;
+    if (action === 'buyable') {
+      const res = SkinStore.purchase(id);
+      if (res.ok) {
+        coinBalance = SkinStore.getCoins();
+        AudioMgr.powerup();
+        updateCoinsHud();
+      }
+    } else if (action === 'owned') {
+      SkinStore.setEquipped(id);
+      AudioMgr.uiClick();
+    }
+    renderWardrobe();
+  });
+
   // ---------------------------------------------------------
   // Update
   // ---------------------------------------------------------
