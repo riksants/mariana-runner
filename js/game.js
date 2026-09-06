@@ -278,6 +278,14 @@
   let highScore = Number(localStorage.getItem('marianaRunnerHighScore') || 0);
   let seenHint = localStorage.getItem('marianaRunnerSeenHint') === '1';
   let milestoneFloor = 0;
+  // Throttles the milestone pulse/chime by real time, not just score —
+  // score climbs faster as the run speeds up, so at max speed a plain
+  // "every 100 points" check was firing the flash/sound almost once a
+  // second for the rest of any long run. milestoneFloor itself still
+  // advances by 100 every time (untouched — no change to scoring or
+  // difficulty), this only rate-limits the cosmetic celebration.
+  let lastMilestoneTime = -Infinity;
+  const MIN_MILESTONE_INTERVAL = 1.2;
 
   let player = {
     y: 0,
@@ -292,6 +300,15 @@
   };
 
   let jumpBufferTimer = 0;
+
+  // Halves the footstrike dust rate (2 puffs/cycle -> 1 puff/cycle on
+  // average) without favoring one foot over the other: toggled once per
+  // full run cycle, so a "silent" cycle skips both footstrike puffs
+  // rather than always dropping the same foot's dust. At max speed the
+  // cycle is only 0.22s, so 2 triggers/cycle was ~9 puffs/second right
+  // at the character's feet — a flicker rate flagged in a visual-fatigue
+  // review. Purely cosmetic; run-cycle timing/speed is untouched.
+  let footstrikeCyclePuffsOn = true;
 
   let idleFrame = 0;
   let idleTimer = 0;
@@ -791,6 +808,7 @@
     }
     score = 0;
     milestoneFloor = 0;
+    lastMilestoneTime = -Infinity;
     elapsed = 0;
     obstacles = [];
     decor = [];
@@ -804,6 +822,7 @@
     player.frame = 0;
     player.frameTimer = 0;
     player.airTimer = 0;
+    footstrikeCyclePuffsOn = true;
     shieldActive = false;
     doubleJumpActive = false;
     doubleJumpTimer = 0;
@@ -974,8 +993,11 @@
     const flooredScore = Math.floor(score);
     if (flooredScore >= milestoneFloor + 100) {
       milestoneFloor = Math.floor(flooredScore / 100) * 100;
-      AudioMgr.milestone();
-      pulseScore();
+      if (elapsed - lastMilestoneTime >= MIN_MILESTONE_INTERVAL) {
+        lastMilestoneTime = elapsed;
+        AudioMgr.milestone();
+        pulseScore();
+      }
     }
 
     if (!recordBrokenThisRun && highScore > 0 && flooredScore > highScore) {
@@ -1035,7 +1057,8 @@
       if (player.frameTimer >= frameDuration) {
         player.frameTimer = 0;
         const next = (player.frame + 1) % RUN_FRAME_COUNT;
-        if (FOOTSTRIKE_FRAMES.has(next)) {
+        if (next === 0) footstrikeCyclePuffsOn = !footstrikeCyclePuffsOn;
+        if (FOOTSTRIKE_FRAMES.has(next) && footstrikeCyclePuffsOn) {
           const px = PLAYER_RIGHT_X - PLAYER_HITBOX.rightInset;
           Particles.dust(px, GROUND_Y, { count: 1, driftX: speed * 0.15 });
         }
@@ -1285,6 +1308,17 @@
       ctx.drawImage(gImg, gx, gY, gW, GROUND_TILE_H);
       gx += gW;
     }
+    // A thin, mostly-transparent wash over the ground band — softens the
+    // tile's naturally busy repeating diamond pattern (a fast-scrolling,
+    // high-contrast texture sitting exactly where the player fixates to
+    // time jumps) without touching the art asset itself or its scroll
+    // speed. Same technique as the day/night tint, just very faint and
+    // constant regardless of time of day.
+    ctx.save();
+    ctx.globalAlpha = 0.16;
+    ctx.fillStyle = '#f3ead9';
+    ctx.fillRect(0, gY, W, GROUND_TILE_H);
+    ctx.restore();
   }
 
   function drawDecor() {

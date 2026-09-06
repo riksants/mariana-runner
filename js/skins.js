@@ -73,9 +73,18 @@ const SkinStore = {
 
 // Coin cluster economy — see docs/superpowers/specs/2026-09-05-wardrobe-skins-design.md
 // "Coin economy" section for how these numbers were derived. Retune here only.
+// Gap widened 2026-09-06 (was 90/70, ~125 avg): the gap is a *distance*
+// threshold that the game already scales by speed every frame
+// (distanceSinceLastCoinCluster += speed * dt), so at max speed the old
+// ~125 average worked out to ~17-18 coins/second on screen — a
+// continuous field of independently-bobbing shapes that was both hard to
+// read past and, per a visual-fatigue review, itself a contributor to
+// eye strain from constant diffuse motion. Doubling the average gap
+// roughly halves the coin rate at every speed (game speed and cluster
+// size are untouched) while keeping coins "common" as designed.
 const COIN_CLUSTER_SIZE = 3;
-const COIN_CLUSTER_GAP_BASE = 90;
-const COIN_CLUSTER_GAP_VARIANCE = 70;
+const COIN_CLUSTER_GAP_BASE = 180;
+const COIN_CLUSTER_GAP_VARIANCE = 140;
 
 function rollCoinClusterGap() {
   return COIN_CLUSTER_GAP_BASE + Math.random() * COIN_CLUSTER_GAP_VARIANCE;

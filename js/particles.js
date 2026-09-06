@@ -131,19 +131,34 @@ const Particles = (() => {
 const ScreenShake = (() => {
   let trauma = 0;
   let x = 0, y = 0;
+  let angle = 0;
+  let t = 0; // time since the current impact, drives the wobble below
 
   function hit(amount = 1) {
     if (REDUCE_MOTION) return;
+    // Fixed once per impact, not re-rolled every frame (see update()) —
+    // a per-frame-random angle was jumping the whole screen to a brand
+    // new, unrelated direction on every single frame while trauma was
+    // active, which is incoherent full-screen noise rather than a
+    // camera "recoil." That kind of noise is a well-documented trigger
+    // for visual discomfort, more so than a smooth periodic shake.
+    angle = Math.random() * Math.PI * 2;
+    t = 0;
     trauma = Math.min(1, trauma + amount);
   }
 
   function update(dt) {
     if (trauma <= 0) { x = 0; y = 0; return; }
     trauma = Math.max(0, trauma - dt * 2.2);
+    t += dt;
     const power = trauma * trauma;
-    const angle = Math.random() * Math.PI * 2;
-    x = Math.cos(angle) * 8 * power;
-    y = Math.sin(angle) * 8 * power;
+    // Same peak magnitude (8 * power) and decay rate as before — only the
+    // direction is now a single fixed axis per impact, oscillating as a
+    // damped sine as it decays. Reads as a coherent impact wobble instead
+    // of random full-screen jitter, with the same "weight" on a hit.
+    const wobble = Math.sin(t * 28) * 8 * power;
+    x = Math.cos(angle) * wobble;
+    y = Math.sin(angle) * wobble;
   }
 
   function offset() { return { x, y }; }

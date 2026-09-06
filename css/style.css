@@ -401,9 +401,16 @@ html, body {
   animation: score-pulse 0.35s ease;
 }
 
+/* Softened 2026-09-06: the previous 1.35 scale + a color flash to accent
+   on every milestone repeated up to ~once/second at max speed (score
+   climbs faster as the run speeds up) — a periodic high-contrast flash
+   in peripheral vision (the HUD sits top-right) read as a visual-fatigue
+   contributor on a long run. Scale-only now, and throttled in JS
+   (pulseScore() call site) so it can't repeat faster than ~1.2s
+   regardless of how fast score is climbing. */
 @keyframes score-pulse {
   0% { transform: scale(1); }
-  40% { transform: scale(1.35); color: var(--accent); }
+  40% { transform: scale(1.15); }
   100% { transform: scale(1); }
 }
 
