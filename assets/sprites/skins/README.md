@@ -63,8 +63,11 @@ build tool here:
   cleanly labeled): 5 of these replace an existing skin's art in place
   (`retro`, `cowgirl`, `boneca`, `bruxa`, `gatinha` — same id/price,
   only the art changed); the other 18 are new. `scripts/extract_skin_frames.py`'s
-  RGB-flood-fill pipeline only cropped 8 of the 23 cleanly; the rest
-  needed a second pipeline (`scripts/extract_skin_frames_alpha.py`)
+  RGB-flood-fill pipeline only passed its own plausibility checks for 8
+  of the 23 on the first attempt — and, per the correction pass below,
+  5 of those 8 turned out to have real defects the plausibility checks
+  don't catch. The other 15 needed a second pipeline
+  (`scripts/extract_skin_frames_alpha.py`)
   built for this batch, since every sheet in it is confirmed alpha=0 on
   background / alpha>0 on real content (no flood-fill heuristic
   needed — threshold the alpha channel directly). That pipeline also
@@ -78,5 +81,22 @@ build tool here:
   crop when two adjacent poses genuinely overlap in x (confirmed on
   Gatinha's run cycle) — solved by dropping any kept secondary
   component that touches the crop's own left/right edge. Every one of
-  the 23 was individually reviewed frame-by-frame as a composited strip
-  before being treated as done.
+  the 23 was reviewed as a composited strip before being treated as
+  done — not enough, it turned out; see the correction pass below.
+- Correction pass (2026-09-09, same day): 6 of the 23 — retro,
+  vampira, professora, sakura, pirata, ninja — had real defects a
+  composited strip at thumbnail scale doesn't show: label text baked
+  into the crop, a boot rendered as a disconnected floating blob, and
+  plain neighbor-frame bleed. 5 of those 6 (all but Kawaii) had passed
+  the older RGB-flood-fill pipeline's plausibility checks on the very
+  first attempt — before the alpha pipeline above even existed — and
+  so were never reprocessed with it; re-running all 6 through the
+  alpha pipeline fixed them the same way it fixed the batch above.
+  Kawaii's bug was different: its sheet uses 4 "parado" poses instead
+  of every other sheet's 2, and the extractor's hardcoded
+  `expected_idle=2` had split that 4-pose group into 2 slots of two
+  fused poses each. Re-ran it with `expected_idle=4`, kept the first 2
+  clean individual poses as `girl_idle_01/02.png` (the fixed 2-frame
+  idle convention every skin and the game code assumes) and discarded
+  the other 2. Lesson for next time: verify a batch by opening suspect
+  frames at full size, not just by eyeballing a composited strip.
