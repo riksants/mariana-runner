@@ -984,7 +984,7 @@
       const btnClass = status === 'equipped' ? 'is-equipped' : status === 'buyable' ? 'is-buyable' : '';
       const disabled = (status === 'equipped' || status === 'locked') ? 'disabled' : '';
       const priceLabel = skin.price > 0 ? `${skin.price} MOEDAS` : 'GRÁTIS';
-      const previewSrc = SKIN_SPRITE_FRAMES[skin.id]
+      const previewSrc = SKIN_PREVIEW_READY[skin.id]
         ? `assets/sprites/skins/${skin.id}/girl_idle_01.png`
         : 'assets/sprites/girl_idle_01.png';
       return `
@@ -1015,6 +1015,7 @@
       }
     } else if (action === 'owned') {
       SkinStore.setEquipped(id);
+      loadSkinFullFrames(id); // fire-and-forget: lazy full-cycle load, see sprites.js
       AudioMgr.uiClick();
     }
     renderWardrobe();

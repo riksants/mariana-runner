@@ -120,26 +120,60 @@ function loadImageOptional(src) {
 }
 
 const SKIN_SPRITE_FRAMES = {};
+// True once a skin's own girl_idle_01.png has been checked (whether or
+// not it turned out to exist) -- cheap enough to check for every skin
+// up front, used only to pick the wardrobe card's preview <img> source.
+// Kept separate from SKIN_SPRITE_FRAMES, which only fills in once a
+// skin's full 18-frame run/jump/idle cycle has loaded (see
+// loadSkinFullFrames below) -- conflating the two would make the
+// wardrobe grid fall back to plain Mariana previews for every skin
+// that hasn't been equipped yet, once full-cycle loading became lazy.
+const SKIN_PREVIEW_READY = {};
+const skinFullFrameLoads = {};
 
-function loadSkinSprites() {
+function loadSkinFullFrames(skinId) {
+  if (skinId === 'normal') return Promise.resolve();
+  if (skinFullFrameLoads[skinId]) return skinFullFrameLoads[skinId];
   const runFrames = 12, jumpFrames = 4, idleFrames = 2;
-  const tasks = SKIN_DEFS.filter((s) => s.id !== 'normal').map((skin) => {
-    const load = (prefix, count) => {
-      const paths = [];
-      for (let i = 1; i <= count; i++) {
-        const n = String(i).padStart(2, '0');
-        paths.push(`assets/sprites/skins/${skin.id}/${prefix}_${n}.png`);
-      }
-      return Promise.all(paths.map(loadImageOptional));
-    };
-    return Promise.all([
-      load('girl_run', runFrames),
-      load('girl_jump', jumpFrames),
-      load('girl_idle', idleFrames),
-    ]).then(([run, jump, idle]) => {
-      const complete = [...run, ...jump, ...idle].every(Boolean);
-      SKIN_SPRITE_FRAMES[skin.id] = complete ? { run, jump, idle } : null;
-    });
+  const load = (prefix, count) => {
+    const paths = [];
+    for (let i = 1; i <= count; i++) {
+      const n = String(i).padStart(2, '0');
+      paths.push(`assets/sprites/skins/${skinId}/${prefix}_${n}.png`);
+    }
+    return Promise.all(paths.map(loadImageOptional));
+  };
+  const promise = Promise.all([
+    load('girl_run', runFrames),
+    load('girl_jump', jumpFrames),
+    load('girl_idle', idleFrames),
+  ]).then(([run, jump, idle]) => {
+    const complete = [...run, ...jump, ...idle].every(Boolean);
+    SKIN_SPRITE_FRAMES[skinId] = complete ? { run, jump, idle } : null;
   });
+  skinFullFrameLoads[skinId] = promise;
+  return promise;
+}
+
+function loadSkinPreviews() {
+  const tasks = SKIN_DEFS.filter((s) => s.id !== 'normal').map((skin) =>
+    loadImageOptional(`assets/sprites/skins/${skin.id}/girl_idle_01.png`).then((img) => {
+      SKIN_PREVIEW_READY[skin.id] = !!img;
+    })
+  );
   return Promise.all(tasks);
+}
+
+// Boot-time loading only fetches the currently-equipped skin's full
+// run/jump/idle cycle (needed to actually play) plus one small preview
+// frame per skin (needed for the wardrobe grid) -- not every skin's
+// full 18-frame set. With 30 skins that would be 540 images blocking
+// the start screen behind a single load gate; a player only ever wears
+// one at a time. Equipping a different skin from the wardrobe kicks off
+// that skin's full-cycle load in the background (see the wardrobe click
+// handler in game.js) -- until it resolves, currentGirlFrames() already
+// falls back to normal Mariana, the same graceful-degradation path this
+// file has always used for a skin with no art at all.
+function loadSkinSprites() {
+  return Promise.all([loadSkinFullFrames(SkinStore.getEquipped()), loadSkinPreviews()]);
 }
