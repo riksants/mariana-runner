@@ -98,5 +98,16 @@ build tool here:
   fused poses each. Re-ran it with `expected_idle=4`, kept the first 2
   clean individual poses as `girl_idle_01/02.png` (the fixed 2-frame
   idle convention every skin and the game code assumes) and discarded
-  the other 2. Lesson for next time: verify a batch by opening suspect
-  frames at full size, not just by eyeballing a composited strip.
+  the other 2. Chef had the same class of bug in its run cycle instead
+  of its idle cycle: its sheet has 13 running poses, not the usual 12,
+  and `expected_run=12` fused the last two into one double-wide frame
+  (caught this time by an automated check — each frame's width and
+  alpha pixel count compared against its own skin's mean, flagging
+  anything under 25% or over 160% of it, run across all 30 skins
+  instead of relying on eyeballing). Re-ran with `expected_run=13` and
+  kept the first 12. Every one of the 30 skins now passes that
+  automated check with zero flags, on top of a frame-by-frame visual
+  pass. Lesson for next time: run the automated width/content check on
+  a new batch from the start, and don't assume a sheet's frame counts
+  match the pack's usual 12/4/2 — check each new sheet's own label
+  text ("(N FRAMES)") or count content blobs programmatically.
