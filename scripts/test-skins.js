@@ -44,11 +44,28 @@ assert(sandbox.SkinStore.isUnlocked('princesa') === false, 'princesa starts lock
 
 const skinOrder = sandbox.SKIN_DEFS.map((s) => s.id);
 assert(
-  JSON.stringify(skinOrder) === JSON.stringify(['normal', 'princesa', 'volei', 'pijama', 'macaca', 'gold', 'noiva']),
-  'wardrobe order is normal-princesa-volei-pijama-macaca-gold-noiva'
+  JSON.stringify(skinOrder) === JSON.stringify(['normal', 'princesa', 'praia', 'mini', 'kawaii', 'volei', 'chef', 'cupido', 'pijama', 'vampira', 'fada', 'gotica', 'arabe', 'gatinha', 'macaca', 'professora', 'retro', 'cowgirl', 'sakura', 'bruxa', 'pirata', 'heroina', 'gold', 'diabinha', 'boneca', 'fenix', 'ninja', 'coelhinha', 'anjo', 'noiva']),
+  'wardrobe order matches SKIN_DEFS insertion order'
 );
 assert(sandbox.skinById('macaca').price === 2500, 'macaca costs 2500 coins');
 assert(sandbox.skinById('macaca').special === undefined, 'macaca is not flagged special (that stays reserved for noiva)');
+assert(sandbox.skinById('retro').name === 'Mariana 8-Bits', 'retro skin is named Mariana 8-Bits');
+assert(sandbox.skinById('cowgirl').name === 'Mariana Cowgirl', 'cowgirl skin is named Mariana Cowgirl');
+
+// Whole-catalog integrity: every non-free skin must have a unique price
+// below noiva's 5000 (the one deliberately most-expensive/special skin),
+// every skin name (besides plain "Mariana") must start with "Mariana ",
+// and no two skins may share an id.
+const nonFree = sandbox.SKIN_DEFS.filter((s) => s.id !== 'normal');
+const prices = nonFree.map((s) => s.price);
+assert(new Set(prices).size === prices.length, 'every non-free skin has a distinct price');
+assert(nonFree.every((s) => s.special || s.price < 5000), 'no skin besides the special one costs 5000+');
+assert(
+  sandbox.SKIN_DEFS.every((s) => s.name === 'Mariana' || s.name.startsWith('Mariana ')),
+  'every skin name starts with "Mariana "'
+);
+const ids = sandbox.SKIN_DEFS.map((s) => s.id);
+assert(new Set(ids).size === ids.length, 'every skin id is unique');
 
 let res = sandbox.SkinStore.purchase('princesa');
 assert(res.ok === false && res.reason === 'insufficient-coins', 'purchase fails with 0 coins');

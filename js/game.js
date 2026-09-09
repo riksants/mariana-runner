@@ -155,8 +155,28 @@
   // ---------------------------------------------------------
   // Sprite target sizes (game units)
   // ---------------------------------------------------------
-  const GIRL_H = 82;
+  const GIRL_H_BASE = 82;
   const CAT_H = 48;
+  // Per-skin visual scale, applied on top of GIRL_H_BASE. Only "mini"
+  // uses this today — the whole point of the skin is that Mariana plays
+  // noticeably smaller, hitbox included (a real, if small, gameplay perk
+  // rather than a purely cosmetic re-skin like every other one).
+  const SKIN_SCALE = { mini: 0.72 };
+  function currentGirlScale() {
+    return SKIN_SCALE[SkinStore.getEquipped()] || 1;
+  }
+  function currentGirlH() {
+    return GIRL_H_BASE * currentGirlScale();
+  }
+  function currentHitbox() {
+    const s = currentGirlScale();
+    return {
+      rightInset: PLAYER_HITBOX.rightInset * s,
+      width: PLAYER_HITBOX.width * s,
+      topInset: PLAYER_HITBOX.topInset * s,
+      height: PLAYER_HITBOX.height * s,
+    };
+  }
   const CAT_JUMP_BOOST = 1.15; // cat leaps a little higher/springier than Mariana — pure charm
   const CACTUS_BIG_H = 92;
   const CACTUS_SMALL_H = 58;
@@ -552,8 +572,8 @@
   }
 
   function celebrateStreak() {
-    const cx = PLAYER_RIGHT_X - GIRL_H * 0.32;
-    const cy = player.y - GIRL_H * 0.75;
+    const cx = PLAYER_RIGHT_X - currentGirlH() * 0.32;
+    const cy = player.y - currentGirlH() * 0.75;
     Particles.sparkle(cx, cy, { color: '#e8b23d', shape: 'star', size: 11, spread: 10 });
     Particles.sparkle(cx - 16, cy - 8, { color: '#a83f1f', shape: 'star', size: 8, spread: 10 });
     Particles.sparkle(cx + 14, cy - 4, { color: '#e8b23d', shape: 'star', size: 8, spread: 10 });
@@ -564,8 +584,8 @@
     highScore = flooredScore;
     localStorage.setItem('marianaRunnerHighScore', String(highScore));
     updateHud();
-    const px = PLAYER_RIGHT_X - PLAYER_HITBOX.width / 2;
-    Particles.burst(px, player.y - GIRL_H * 0.6);
+    const px = PLAYER_RIGHT_X - currentHitbox().width / 2;
+    Particles.burst(px, player.y - currentGirlH() * 0.6);
     AudioMgr.record();
     announce(`Novo recorde: ${flooredScore} pontos!`);
     unlockAchievement('new_record');
@@ -866,8 +886,8 @@
     updateHud();
 
     if (isRecord) {
-      const px = PLAYER_RIGHT_X - PLAYER_HITBOX.width / 2;
-      Particles.burst(px, player.y - GIRL_H * 0.6);
+      const px = PLAYER_RIGHT_X - currentHitbox().width / 2;
+      Particles.burst(px, player.y - currentGirlH() * 0.6);
       setTimeout(() => AudioMgr.record(), 260);
       announce(`Fim de jogo. Novo recorde: ${finalScore} pontos.`);
     } else {
@@ -922,7 +942,30 @@
     volleyball: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 4v16M5 8c3 2 11 2 14 0M5 16c3-2 11-2 14 0" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>',
     moon: '<svg viewBox="0 0 24 24"><path d="M15 3a9 9 0 1 0 6 15 7 7 0 0 1-6-15z" fill="currentColor"/></svg>',
     monkey: '<svg viewBox="0 0 24 24"><circle cx="12" cy="14" r="7" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="5.5" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="18.5" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="9.3" cy="13" r="0.9" fill="currentColor"/><circle cx="14.7" cy="13" r="0.9" fill="currentColor"/><path d="M9.5 17.5c1-1 4-1 5 0" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
+    pixel: '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="6" height="6" fill="currentColor"/><rect x="15" y="3" width="6" height="6" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="15" width="6" height="6" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="15" y="15" width="6" height="6" fill="currentColor"/></svg>',
+    sheriffstar: '<svg viewBox="0 0 24 24"><path d="M12 3l2.1 4.4 4.9.6-3.6 3.4.9 4.9-4.3-2.4-4.3 2.4.9-4.9L5 8l4.9-.6z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>',
     gem: '<svg viewBox="0 0 24 24"><path d="M6 4h12l3 5-9 11L3 9z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>',
+    bunny: '<svg viewBox="0 0 24 24"><path d="M9 10c-1-3 0-6 1.5-6S12 7 12 10M15 10c1-3 0-6-1.5-6S12 7 12 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="14" r="5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>',
+    devilhorns: '<svg viewBox="0 0 24 24"><path d="M7 9c-2-2-2-5 0-6 1 1 2 3 2 5M17 9c2-2 2-5 0-6-1 1-2 3-2 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M12 20l-3-6h6z" fill="currentColor"/></svg>',
+    shuriken: '<svg viewBox="0 0 24 24"><path d="M12 2l2 7 7 2-7 2-2 7-2-7-7-2 7-2z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>',
+    skull: '<svg viewBox="0 0 24 24"><path d="M12 3a7 7 0 0 0-7 7c0 3 2 5 3 6v3h2v-2h1v2h2v-2h1v2h2v-3c1-1 3-3 3-6a7 7 0 0 0-7-7z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="9.5" cy="10" r="1.4" fill="currentColor"/><circle cx="14.5" cy="10" r="1.4" fill="currentColor"/></svg>',
+    book: '<svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h6v16H6a2 2 0 0 0-2 2z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M20 5a2 2 0 0 0-2-2h-6v16h6a2 2 0 0 1 2 2z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>',
+    blossom: '<svg viewBox="0 0 24 24"><g fill="currentColor"><circle cx="12" cy="7" r="2.6"/><circle cx="17" cy="10.5" r="2.6"/><circle cx="15" cy="16" r="2.6"/><circle cx="9" cy="16" r="2.6"/><circle cx="7" cy="10.5" r="2.6"/></g></svg>',
+    fang: '<svg viewBox="0 0 24 24"><path d="M7 4c1 4 1 7 0 10l3-2 2 4 2-4 3 2c-1-3-1-6 0-10-2 2-3 3-5 3s-3-1-5-3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>',
+    doll: '<svg viewBox="0 0 24 24"><circle cx="12" cy="6" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 20l1-8h6l1 8z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>',
+    sun: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.5 4.5l2 2M17.5 17.5l2 2M19.5 4.5l-2 2M6.5 17.5l-2 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+    tinystar: '<svg viewBox="0 0 24 24"><path d="M12 5l1.6 3.6L17 10l-3.4 1.4L12 15l-1.6-3.6L7 10l3.4-1.4z" fill="currentColor"/></svg>',
+    ribbon: '<svg viewBox="0 0 24 24"><path d="M12 12 4 7v10z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 12 20 7v10z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/></svg>',
+    chefhat: '<svg viewBox="0 0 24 24"><path d="M7 11a4 4 0 0 1 3-6 3 3 0 0 1 4 0 4 4 0 0 1 3 6v3H7z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><rect x="7" y="15" width="10" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>',
+    heartarrow: '<svg viewBox="0 0 24 24"><path d="M12 19s-7-4.4-7-9.3A4 4 0 0 1 12 7a4 4 0 0 1 7 2.7C19 14.6 12 19 12 19z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M3 5l5 5M8 5H3v5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    wand: '<svg viewBox="0 0 24 24"><path d="M5 19 17 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M17 3l1.2 2.8L21 7l-2.8 1.2L17 11l-1.2-2.8L13 7l2.8-1.2z" fill="currentColor"/></svg>',
+    bat: '<svg viewBox="0 0 24 24"><path d="M12 8c-2-3-6-4-9-2 2 0 3 1 4 2-2 0-3 1-4 3 2-1 4-1 5 0-1 1-1 2 0 3 1-2 2-3 4-3s3 1 4 3c1-1 1-2 0-3 1-1 3-1 5 0-1-2-2-3-4-3 1-1 2-2 4-2-3-2-7-1-9 2z" fill="currentColor"/></svg>',
+    lamp: '<svg viewBox="0 0 24 24"><path d="M4 17c0-2 2-3 4-3h5l3-3h3l-2 3c2 .3 3 1.6 3 3 0 2-2 3-8 3s-8-1-8-3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>',
+    pawprint: '<svg viewBox="0 0 24 24"><circle cx="12" cy="15" r="4" fill="currentColor"/><circle cx="7" cy="9" r="2" fill="currentColor"/><circle cx="12" cy="6.5" r="2" fill="currentColor"/><circle cx="17" cy="9" r="2" fill="currentColor"/></svg>',
+    witchhat: '<svg viewBox="0 0 24 24"><path d="M12 3l5 12H7z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><rect x="4" y="15" width="16" height="2.4" rx="1" fill="currentColor"/></svg>',
+    bolt: '<svg viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6z" fill="currentColor"/></svg>',
+    flame: '<svg viewBox="0 0 24 24"><path d="M12 2c2 4-2 5-2 9a4 4 0 1 0 8 0c0-2-1-4-2-5 1 2 0 4-1 4a2 2 0 0 1-2-2c0-3 2-4-1-6z" fill="currentColor"/></svg>',
+    halo: '<svg viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="6" ry="2.4" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M6 10c0 5 3 9 6 9s6-4 6-9" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>',
     ring: '<svg viewBox="0 0 24 24"><circle cx="12" cy="15" r="6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 9 9 3h6z" fill="currentColor"/></svg>',
   };
 
@@ -1033,7 +1076,8 @@
         player.squashT = 0;
         player.squashKind = 'land';
         AudioMgr.land();
-        const px = PLAYER_RIGHT_X - PLAYER_HITBOX.width - PLAYER_HITBOX.rightInset + PLAYER_HITBOX.width / 2;
+        const hb = currentHitbox();
+        const px = PLAYER_RIGHT_X - hb.width - hb.rightInset + hb.width / 2;
         Particles.dust(px, GROUND_Y, { count: 5 });
       }
       if (jumpBufferTimer > 0) {
@@ -1059,7 +1103,7 @@
         const next = (player.frame + 1) % RUN_FRAME_COUNT;
         if (next === 0) footstrikeCyclePuffsOn = !footstrikeCyclePuffsOn;
         if (FOOTSTRIKE_FRAMES.has(next) && footstrikeCyclePuffsOn) {
-          const px = PLAYER_RIGHT_X - PLAYER_HITBOX.rightInset;
+          const px = PLAYER_RIGHT_X - currentHitbox().rightInset;
           Particles.dust(px, GROUND_Y, { count: 1, driftX: speed * 0.15 });
         }
         player.frame = next;
@@ -1109,11 +1153,12 @@
     coins = coins.filter(c => c.x + c.w > -10);
 
     // --- collision ---
-    const px = PLAYER_RIGHT_X - PLAYER_HITBOX.rightInset - PLAYER_HITBOX.width;
-    const pw = PLAYER_HITBOX.width;
-    const spriteTop = player.y - GIRL_H;
-    const hitboxY = spriteTop + PLAYER_HITBOX.topInset;
-    const hitboxH = PLAYER_HITBOX.height;
+    const hitbox = currentHitbox();
+    const px = PLAYER_RIGHT_X - hitbox.rightInset - hitbox.width;
+    const pw = hitbox.width;
+    const spriteTop = player.y - currentGirlH();
+    const hitboxY = spriteTop + hitbox.topInset;
+    const hitboxH = hitbox.height;
 
     // Power-up pickups use a generous, forgiving box around the same
     // anchor — collecting a buff should feel easy, unlike dodging.
@@ -1359,7 +1404,7 @@
     } else {
       img = frames.run[player.frame];
     }
-    drawSpriteRB(ctx, img, PLAYER_RIGHT_X, player.y, GIRL_H, squashScale());
+    drawSpriteRB(ctx, img, PLAYER_RIGHT_X, player.y, currentGirlH(), squashScale());
   }
 
   function drawCat() {
@@ -1412,15 +1457,15 @@
   }
 
   function drawShieldHalo() {
-    const cx = PLAYER_RIGHT_X - GIRL_H * 0.32;
-    const cy = player.y - GIRL_H * 0.5;
+    const cx = PLAYER_RIGHT_X - currentGirlH() * 0.32;
+    const cy = player.y - currentGirlH() * 0.5;
     ctx.save();
     ctx.strokeStyle = '#2b2b2b';
     ctx.globalAlpha = 0.55 + 0.15 * Math.sin(elapsed * 6);
     ctx.lineWidth = 2;
     ctx.setLineDash([4, 4]);
     ctx.beginPath();
-    ctx.arc(cx, cy, GIRL_H * 0.62, 0, Math.PI * 2);
+    ctx.arc(cx, cy, currentGirlH() * 0.62, 0, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
   }
