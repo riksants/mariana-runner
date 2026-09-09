@@ -111,3 +111,19 @@ build tool here:
   a new batch from the start, and don't assume a sheet's frame counts
   match the pack's usual 12/4/2 — check each new sheet's own label
   text ("(N FRAMES)") or count content blobs programmatically.
+- Professora had the same idle-pose-count bug as Kawaii, just missed
+  by the first automated check: its sheet has 4 "parado" poses, not 2,
+  and since ALL of them got fused pairwise (not just one, like Chef's
+  13th run pose), both output idle frames were equally wide — a
+  same-kind width comparison (each frame vs its own kind's mean) sees
+  no outlier when every frame in that kind is uniformly affected.
+  Re-checked all 30 skins with a cross-kind comparison instead (each
+  jump/idle frame's width vs that skin's own run-frame median, since a
+  real single-character run pose is a reliable width reference); this
+  also flagged several skins' widest jump/idle frames (Anjo, Boneca,
+  Diabinha, Fenix, Gatinha, Mini, Retro, Sakura, Coelhinha) at 1.55x+
+  the run median. Every one of those was individually confirmed by eye
+  to be a real, single, un-fused character — hair, wings, a dress, or a
+  tail legitimately spreading wider in that one pose — not a repeat of
+  this bug. Re-ran Professora with `expected_idle=4` and kept the first
+  2 poses.
