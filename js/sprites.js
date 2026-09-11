@@ -30,6 +30,21 @@ const SPRITE_PATHS = {
   selvaGround: 'assets/sprites/biome_selva_ground.png',
   neveGround: 'assets/sprites/biome_neve_ground.png',
   vulcaoGround: 'assets/sprites/biome_vulcao_ground.png',
+
+  selvaObstacleSmall: 'assets/sprites/biome_obstacle_selva_small.png',
+  selvaObstacleBig: 'assets/sprites/biome_obstacle_selva_big.png',
+  selvaObstacleRock: 'assets/sprites/biome_obstacle_selva_rock.png',
+  selvaObstacleRockSmall: 'assets/sprites/biome_obstacle_selva_rockSmall.png',
+
+  neveObstacleSmall: 'assets/sprites/biome_obstacle_neve_small.png',
+  neveObstacleBig: 'assets/sprites/biome_obstacle_neve_big.png',
+  neveObstacleRock: 'assets/sprites/biome_obstacle_neve_rock.png',
+  neveObstacleRockSmall: 'assets/sprites/biome_obstacle_neve_rockSmall.png',
+
+  vulcaoObstacleSmall: 'assets/sprites/biome_obstacle_vulcao_small.png',
+  vulcaoObstacleBig: 'assets/sprites/biome_obstacle_vulcao_big.png',
+  vulcaoObstacleRock: 'assets/sprites/biome_obstacle_vulcao_rock.png',
+  vulcaoObstacleRockSmall: 'assets/sprites/biome_obstacle_vulcao_rockSmall.png',
 };
 
 (function buildFrameManifest() {

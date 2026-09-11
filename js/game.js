@@ -440,8 +440,22 @@
   // Cycles endlessly through the list, BIOME_SCORE_STEP points per stage.
   const BIOME_SCORE_STEP = 4000;
   const BIOME_ORDER = ['desert', 'selva', 'neve', 'vulcao'];
-  function currentBiome() {
-    return BIOME_ORDER[Math.floor(score / BIOME_SCORE_STEP) % BIOME_ORDER.length];
+  // The last BIOME_TRANSITION_WINDOW points of every stage crossfade into
+  // the next biome instead of cutting over instantly.
+  const BIOME_TRANSITION_WINDOW = 500;
+  // { from, to, t } — t is 0 for almost all of a stage, then eases from 0
+  // to 1 across the transition window right before the next boundary.
+  // `from`/`to` are always adjacent biomes in BIOME_ORDER (cyclic), so at
+  // t=0 rendering/spawning only `from` is indistinguishable from the old
+  // hard-cutover behavior.
+  function biomeInfoForScore(s) {
+    const idx = Math.floor(s / BIOME_SCORE_STEP);
+    const from = BIOME_ORDER[idx % BIOME_ORDER.length];
+    const to = BIOME_ORDER[(idx + 1) % BIOME_ORDER.length];
+    const nextBoundary = (idx + 1) * BIOME_SCORE_STEP;
+    const windowStart = nextBoundary - BIOME_TRANSITION_WINDOW;
+    const t = s >= windowStart ? Math.min(1, (s - windowStart) / BIOME_TRANSITION_WINDOW) : 0;
+    return { from, to, t };
   }
 
   // Static backdrop art for each non-desert biome (the source art is one
@@ -452,6 +466,27 @@
     neve: { sprite: 'neveBg', sky: '#406eb0', ground: 'neveGround' },
     vulcao: { sprite: 'vulcaoBg', sky: '#3f3c56', ground: 'vulcaoGround' },
   };
+
+  // Ground-obstacle sprites are per biome — desert's cactus/rock set must
+  // never appear once a biome swap has happened, and vice versa. Each
+  // biome keeps the same 4 roles (unlockedTypes/CACTUS_*_H/ROCK_*_H below
+  // are untouched) so difficulty and hitboxes stay identical; only the
+  // artwork per role changes.
+  const BIOME_OBSTACLE_SPRITES = {
+    desert: { cactusSmall: 'cactusSmall', cactusBig: 'cactusBig', rock: 'rock', rockSmall: 'rockSmall' },
+    selva: { cactusSmall: 'selvaObstacleSmall', cactusBig: 'selvaObstacleBig', rock: 'selvaObstacleRock', rockSmall: 'selvaObstacleRockSmall' },
+    neve: { cactusSmall: 'neveObstacleSmall', cactusBig: 'neveObstacleBig', rock: 'neveObstacleRock', rockSmall: 'neveObstacleRockSmall' },
+    vulcao: { cactusSmall: 'vulcaoObstacleSmall', cactusBig: 'vulcaoObstacleBig', rock: 'vulcaoObstacleRock', rockSmall: 'vulcaoObstacleRockSmall' },
+  };
+  // Chooses which biome's obstacle art a *newly spawned* group uses.
+  // During a transition window this probabilistically mixes old/new-biome
+  // obstacles, shifting from 100% old to 100% new as t goes 0→1 — already
+  // on-screen obstacles keep whatever they spawned with (see spawnBiome
+  // stored per obstacle) so nothing changes appearance mid-flight.
+  function pickSpawnBiome() {
+    const { from, to, t } = biomeInfoForScore(score);
+    return Math.random() < t ? to : from;
+  }
 
   function reactionTimeFloor() {
     const t = 1.05 - score * 0.0009;
@@ -485,23 +520,25 @@
     return types[Math.floor(Math.random() * types.length)];
   }
 
-  function obstacleSpec(type) {
+  function obstacleSpec(type, biome) {
+    const sprites = BIOME_OBSTACLE_SPRITES[biome] || BIOME_OBSTACLE_SPRITES.desert;
     switch (type) {
-      case 'cactusSmall': return { img: SPRITES.cactusSmall, h: CACTUS_SMALL_H };
-      case 'cactusBig': return { img: SPRITES.cactusBig, h: CACTUS_BIG_H };
-      case 'rock': return { img: SPRITES.rock, h: ROCK_H };
-      case 'rockSmall': return { img: SPRITES.rockSmall, h: ROCK_SMALL_H };
+      case 'cactusSmall': return { img: SPRITES[sprites.cactusSmall], h: CACTUS_SMALL_H };
+      case 'cactusBig': return { img: SPRITES[sprites.cactusBig], h: CACTUS_BIG_H };
+      case 'rock': return { img: SPRITES[sprites.rock], h: ROCK_H };
+      case 'rockSmall': return { img: SPRITES[sprites.rockSmall], h: ROCK_SMALL_H };
     }
   }
 
-  function obstacleDims(type) {
-    const spec = obstacleSpec(type);
+  function obstacleDims(type, biome) {
+    const spec = obstacleSpec(type, biome);
     return { w: spriteWidthForHeight(spec.img, spec.h), h: spec.h };
   }
 
   function spawnObstacleGroup() {
     const speed = currentSpeed();
     const types = unlockedTypes();
+    const spawnBiome = pickSpawnBiome();
     const startX = W + 10;
     let groupEndX = startX;
 
@@ -515,21 +552,21 @@
       for (let i = 0; i < count; i++) {
         const type = i === 0 && types.includes('cactusBig') && Math.random() < 0.3
           ? 'cactusBig' : 'cactusSmall';
-        const dims = obstacleDims(type);
+        const dims = obstacleDims(type, spawnBiome);
         const addW = (planned.length ? gapBetween : 0) + dims.w;
         if (totalW + addW > maxW && planned.length > 0) break;
         planned.push({ type, dims });
         totalW += addW;
       }
       planned.forEach((p) => {
-        obstacles.push({ x: cursor, w: p.dims.w, h: p.dims.h, type: p.type });
+        obstacles.push({ x: cursor, w: p.dims.w, h: p.dims.h, type: p.type, biome: spawnBiome });
         cursor += p.dims.w + gapBetween;
       });
       groupEndX = cursor;
     } else {
       const type = pickObstacleType(types);
-      const dims = obstacleDims(type);
-      obstacles.push({ x: startX, w: dims.w, h: dims.h, type });
+      const dims = obstacleDims(type, spawnBiome);
+      obstacles.push({ x: startX, w: dims.w, h: dims.h, type, biome: spawnBiome });
       groupEndX = startX + dims.w;
     }
     maybeSpawnRewardCoins(groupEndX);
@@ -1382,10 +1419,14 @@
     }
   }
 
-  function drawBackground() {
-    const gY = H - GROUND_TILE_H;
-
-    const backdrop = BIOME_BACKDROPS[currentBiome()];
+  // Sky + backdrop (mountains or the static biome scene) for one biome,
+  // drawn at the given opacity. Used twice per frame during a transition
+  // window (outgoing biome at alpha 1, incoming biome layered on top at
+  // alpha t) so the swap dissolves gradually instead of cutting instantly.
+  function drawBiomeSkyAndBackdrop(biomeName, alpha, gY) {
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    const backdrop = BIOME_BACKDROPS[biomeName];
     if (backdrop) {
       ctx.fillStyle = backdrop.sky;
       ctx.fillRect(0, 0, W, H);
@@ -1407,17 +1448,18 @@
         mx += mW;
       }
     }
+    ctx.restore();
+  }
 
-    for (const c of clouds) {
-      const img = SPRITES[c.img];
-      const h = 70 * c.scale;
-      const w = spriteWidthForHeight(img, h);
-      ctx.drawImage(img, c.x, c.y, w, h);
-    }
-
+  // Ground tile for one biome, drawn at the given opacity — same
+  // crossfade pairing as drawBiomeSkyAndBackdrop above.
+  function drawBiomeGround(biomeName, alpha, gY) {
+    const backdrop = BIOME_BACKDROPS[biomeName];
     const gImg = backdrop ? SPRITES[backdrop.ground] : SPRITES.groundTile;
     const gW = spriteWidthForHeight(gImg, GROUND_TILE_H);
     let gx = (groundScrollX % gW) - gW;
+    ctx.save();
+    ctx.globalAlpha = alpha;
     while (gx < W) {
       ctx.drawImage(gImg, gx, gY, gW, GROUND_TILE_H);
       gx += gW;
@@ -1430,12 +1472,29 @@
     // faint and constant regardless of time of day. Desert-specific — the
     // other biomes' ground crops don't share that pattern.
     if (!backdrop) {
-      ctx.save();
-      ctx.globalAlpha = 0.16;
+      ctx.globalAlpha = alpha * 0.16;
       ctx.fillStyle = '#f3ead9';
       ctx.fillRect(0, gY, W, GROUND_TILE_H);
-      ctx.restore();
     }
+    ctx.restore();
+  }
+
+  function drawBackground() {
+    const gY = H - GROUND_TILE_H;
+    const { from, to, t } = biomeInfoForScore(score);
+
+    drawBiomeSkyAndBackdrop(from, 1, gY);
+    if (t > 0) drawBiomeSkyAndBackdrop(to, t, gY);
+
+    for (const c of clouds) {
+      const img = SPRITES[c.img];
+      const h = 70 * c.scale;
+      const w = spriteWidthForHeight(img, h);
+      ctx.drawImage(img, c.x, c.y, w, h);
+    }
+
+    drawBiomeGround(from, 1, gY);
+    if (t > 0) drawBiomeGround(to, t, gY);
   }
 
   function drawDecor() {
@@ -1496,7 +1555,7 @@
 
   function drawObstacles() {
     for (const o of obstacles) {
-      const spec = obstacleSpec(o.type);
+      const spec = obstacleSpec(o.type, o.biome);
       ctx.drawImage(spec.img, o.x, GROUND_Y - o.h, o.w, o.h);
     }
   }
