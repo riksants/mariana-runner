@@ -396,6 +396,24 @@
     return Math.min(MAX_SPEED, BASE_SPEED + score * SPEED_PER_POINT);
   }
 
+  // Biome swap: purely score-driven (like unlockedTypes below), so a new
+  // run always starts back in the desert without any extra reset code.
+  // Cycles endlessly through the list, BIOME_SCORE_STEP points per stage.
+  const BIOME_SCORE_STEP = 4000;
+  const BIOME_ORDER = ['desert', 'selva', 'neve', 'vulcao'];
+  function currentBiome() {
+    return BIOME_ORDER[Math.floor(score / BIOME_SCORE_STEP) % BIOME_ORDER.length];
+  }
+
+  // Static backdrop art for each non-desert biome (the source art is one
+  // illustrated scene per biome, not a tileable strip like mountains.png,
+  // so it doesn't scroll — see drawBackground).
+  const BIOME_BACKDROPS = {
+    selva: { sprite: 'selvaBg', sky: '#42646b', ground: 'selvaGround' },
+    neve: { sprite: 'neveBg', sky: '#406eb0', ground: 'neveGround' },
+    vulcao: { sprite: 'vulcaoBg', sky: '#3f3c56', ground: 'vulcaoGround' },
+  };
+
   function reactionTimeFloor() {
     const t = 1.05 - score * 0.0009;
     return Math.max(0.55, t);
@@ -1326,17 +1344,29 @@
   }
 
   function drawBackground() {
-    ctx.fillStyle = '#f3ead9';
-    ctx.fillRect(0, 0, W, H);
+    const gY = H - GROUND_TILE_H;
 
-    const mImg = SPRITES.mountains;
-    const mH = 96;
-    const mW = spriteWidthForHeight(mImg, mH);
-    const mY = GROUND_Y - mH + 30;
-    let mx = (mountainScrollX % mW) - mW;
-    while (mx < W) {
-      ctx.drawImage(mImg, mx, mY, mW, mH);
-      mx += mW;
+    const backdrop = BIOME_BACKDROPS[currentBiome()];
+    if (backdrop) {
+      ctx.fillStyle = backdrop.sky;
+      ctx.fillRect(0, 0, W, H);
+      const bgImg = SPRITES[backdrop.sprite];
+      const bgH = Math.min(200, gY * 0.78);
+      const bgW = spriteWidthForHeight(bgImg, bgH);
+      ctx.drawImage(bgImg, (W - bgW) / 2, gY - bgH, bgW, bgH);
+    } else {
+      ctx.fillStyle = '#f3ead9';
+      ctx.fillRect(0, 0, W, H);
+
+      const mImg = SPRITES.mountains;
+      const mH = 96;
+      const mW = spriteWidthForHeight(mImg, mH);
+      const mY = GROUND_Y - mH + 30;
+      let mx = (mountainScrollX % mW) - mW;
+      while (mx < W) {
+        ctx.drawImage(mImg, mx, mY, mW, mH);
+        mx += mW;
+      }
     }
 
     for (const c of clouds) {
@@ -1346,25 +1376,27 @@
       ctx.drawImage(img, c.x, c.y, w, h);
     }
 
-    const gImg = SPRITES.groundTile;
+    const gImg = backdrop ? SPRITES[backdrop.ground] : SPRITES.groundTile;
     const gW = spriteWidthForHeight(gImg, GROUND_TILE_H);
-    const gY = H - GROUND_TILE_H;
     let gx = (groundScrollX % gW) - gW;
     while (gx < W) {
       ctx.drawImage(gImg, gx, gY, gW, GROUND_TILE_H);
       gx += gW;
     }
     // A thin, mostly-transparent wash over the ground band — softens the
-    // tile's naturally busy repeating diamond pattern (a fast-scrolling,
-    // high-contrast texture sitting exactly where the player fixates to
-    // time jumps) without touching the art asset itself or its scroll
-    // speed. Same technique as the day/night tint, just very faint and
-    // constant regardless of time of day.
-    ctx.save();
-    ctx.globalAlpha = 0.16;
-    ctx.fillStyle = '#f3ead9';
-    ctx.fillRect(0, gY, W, GROUND_TILE_H);
-    ctx.restore();
+    // desert tile's naturally busy repeating diamond pattern (a
+    // fast-scrolling, high-contrast texture sitting exactly where the
+    // player fixates to time jumps) without touching the art asset itself
+    // or its scroll speed. Same technique as the day/night tint, just very
+    // faint and constant regardless of time of day. Desert-specific — the
+    // other biomes' ground crops don't share that pattern.
+    if (!backdrop) {
+      ctx.save();
+      ctx.globalAlpha = 0.16;
+      ctx.fillStyle = '#f3ead9';
+      ctx.fillRect(0, gY, W, GROUND_TILE_H);
+      ctx.restore();
+    }
   }
 
   function drawDecor() {

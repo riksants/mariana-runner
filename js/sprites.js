@@ -22,6 +22,14 @@ const SPRITE_PATHS = {
   cloudBig: 'assets/sprites/cloud_big.png',
   cloudSmall1: 'assets/sprites/cloud_small1.png',
   mountains: 'assets/sprites/mountains.png',
+
+  selvaBg: 'assets/sprites/biome_selva_bg.png',
+  neveBg: 'assets/sprites/biome_neve_bg.png',
+  vulcaoBg: 'assets/sprites/biome_vulcao_bg.png',
+
+  selvaGround: 'assets/sprites/biome_selva_ground.png',
+  neveGround: 'assets/sprites/biome_neve_ground.png',
+  vulcaoGround: 'assets/sprites/biome_vulcao_ground.png',
 };
 
 (function buildFrameManifest() {
