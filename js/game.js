@@ -69,8 +69,7 @@
   const BASE_H = 300;
   const BASE_ASPECT = W / BASE_H;
   const MIN_H = BASE_H;
-  const MAX_H = 480;
-  const MOBILE_WIDTH_THRESHOLD = 960;
+  const MAX_H = 600;
   const MAX_DPR = 3; // guards against absurd backing-store sizes on some devices
   let H = BASE_H;
 
@@ -86,10 +85,20 @@
   // the raw viewport aspect never quite fits the padded box, leaving a
   // strip of unused width down each side even though the whole point of
   // this function is to avoid exactly that letterboxing.
+  //
+  // Applies on ANY device, not just narrow/mobile widths — a tablet or a
+  // regular 16:9 desktop window is still narrower than BASE_ASPECT
+  // (800:300 is unusually wide), so without this a tablet/desktop was
+  // stuck at H=300 and letterboxed hard. Growing H only adds more sky
+  // above the fixed GROUND_Y line — every sprite keeps its own fixed
+  // game-unit size, so nothing stretches or resizes, the camera just
+  // shows more vertical space. The upper bound on availAspect (portrait
+  // phones) is intentional: below it the world stays at its normal
+  // proportions and the rotate-device hint (CSS) takes over instead.
   function computeLogicalHeight(availW, availH) {
     const availAspect = availW / availH;
     let newH = BASE_H;
-    if (availW <= MOBILE_WIDTH_THRESHOLD && availAspect < BASE_ASPECT && availAspect > 0.9) {
+    if (availAspect < BASE_ASPECT && availAspect > 0.9) {
       newH = Math.round(W / availAspect);
       newH = Math.max(MIN_H, Math.min(MAX_H, newH));
     }
