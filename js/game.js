@@ -118,6 +118,25 @@
   // backs the canvas with devicePixelRatio-scaled resolution so every
   // sprite and every HUD line stays crisp.
   function applyResolution() {
+    // #game-wrap is sized by CSS (100vw/100dvh) as a first-paint default,
+    // but on real iOS Safari in landscape that can still diverge from the
+    // true visible area — a position:fixed element's box doesn't always
+    // track the dynamic toolbar the way the dvh unit is supposed to,
+    // leaving a solid band of the wrap's own background showing outside
+    // the frame (confirmed on-device: the gap was exactly --paper-dim,
+    // the wrap's CSS background, not a canvas rendering issue). The
+    // visualViewport API reports the real, currently-visible box
+    // directly, so pin the wrap to it in JS whenever it's available —
+    // this is strictly a viewport-sizing correction, nothing gameplay
+    // related changes below.
+    const vv = window.visualViewport;
+    if (vv) {
+      wrap.style.width = vv.width + 'px';
+      wrap.style.height = vv.height + 'px';
+      wrap.style.left = vv.offsetLeft + 'px';
+      wrap.style.top = vv.offsetTop + 'px';
+    }
+
     const wrapStyle = getComputedStyle(wrap);
     const padX = parseFloat(wrapStyle.paddingLeft) + parseFloat(wrapStyle.paddingRight);
     const padY = parseFloat(wrapStyle.paddingTop) + parseFloat(wrapStyle.paddingBottom);
@@ -155,6 +174,14 @@
   }
   window.addEventListener('resize', applyResolution);
   window.addEventListener('orientationchange', applyResolution);
+  // visualViewport fires its own resize/scroll independently of window's
+  // on iOS Safari (e.g. the toolbar showing/hiding in landscape) — the
+  // wrap-pinning above only helps if applyResolution actually re-runs
+  // when that happens.
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', applyResolution);
+    window.visualViewport.addEventListener('scroll', applyResolution);
+  }
 
   document.addEventListener('gesturestart', (e) => e.preventDefault());
   let lastTouchEnd = 0;
