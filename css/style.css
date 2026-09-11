@@ -16,7 +16,14 @@ html, body {
   margin: 0;
   padding: 0;
   width: 100%;
+  /* height:100% here resolves against the layout viewport, which on a
+     real mobile browser is sized as if the address bar were hidden —
+     it does not shrink when the bar is actually on screen, leaving a
+     gap of empty space at the bottom. 100dvh tracks the real, currently
+     visible viewport instead. The plain 100% stays first as a fallback
+     for browsers that don't support dvh. */
   height: 100%;
+  height: 100dvh;
   background: var(--paper-dim);
   overflow: hidden;
   overscroll-behavior: none;
@@ -32,7 +39,17 @@ html, body {
 
 #game-wrap {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  /* Explicit 100vw/100dvh instead of inset:0 — inset:0 sizes against
+     the fixed element's containing block (the layout viewport), which
+     has the same stale-on-real-devices behavior as plain 100%/100vh
+     (see html/body above). 100vh is the fallback for browsers without
+     dvh support; 100dvh (when supported) overrides it with the actual
+     visible height as the browser's UI shows/hides. */
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
