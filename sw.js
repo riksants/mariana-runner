@@ -15,8 +15,9 @@
 // first visit ever reached their already-installed copy. v3, 2026-09-05:
 // removed js/skin-effects.js — it no longer exists, and cache.addAll()
 // fails its entire install if even one precached URL 404s. v4, 2026-09-05:
-// added js/achievements.js.)
-const CACHE_NAME = 'mariana-runner-v4';
+// added js/achievements.js. v5, 2026-09-11: favicon.svg replaced with
+// favicon.png (new logo).)
+const CACHE_NAME = 'mariana-runner-v5';
 const APP_SHELL = [
   './',
   './index.html',
@@ -28,7 +29,7 @@ const APP_SHELL = [
   './js/sprites.js',
   './js/audio.js',
   './js/game.js',
-  './assets/favicon.svg',
+  './assets/favicon.png',
   './assets/icons/icon-120.png',
   './assets/icons/icon-152.png',
   './assets/icons/icon-167.png',
