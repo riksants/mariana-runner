@@ -37,16 +37,18 @@ html, body {
   align-items: center;
   justify-content: center;
   background: var(--paper-dim);
-  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
-            max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  /* No fixed floor here (was max(12px, ...)) — the game should fill the
+     screen edge to edge on every device. Only an actual device notch/home
+     indicator (env(safe-area-inset-*), 0 on devices without one) still
+     reserves space, since that's obstruction, not decorative margin. */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+            env(safe-area-inset-bottom) env(safe-area-inset-left);
   touch-action: none;
 }
 
 #game-frame {
   position: relative;
   background: var(--paper);
-  border: 3px solid var(--ink);
-  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.15);
   touch-action: none;
   user-select: none;
   line-height: 0;
@@ -57,10 +59,6 @@ html, body {
   width: 100%;
   height: 100%;
   cursor: pointer;
-}
-
-@media (orientation: landscape) and (max-height: 500px) {
-  #game-frame { border-width: 2px; }
 }
 
 /* ---------- HUD (live score, drawn as real DOM text for crisp
