@@ -54,12 +54,13 @@ html, body {
   align-items: center;
   justify-content: center;
   background: var(--paper-dim);
-  /* No fixed floor here (was max(12px, ...)) — the game should fill the
-     screen edge to edge on every device. Only an actual device notch/home
-     indicator (env(safe-area-inset-*), 0 on devices without one) still
-     reserves space, since that's obstruction, not decorative margin. */
-  padding: env(safe-area-inset-top) env(safe-area-inset-right)
-            env(safe-area-inset-bottom) env(safe-area-inset-left);
+  /* No padding at all, including safe-area-inset — on-device testing
+     (?debug=1) measured a notched iPhone reserving 62px left/right +
+     20px bottom for the notch/home-indicator safe area in landscape.
+     That reservation is exactly the "empty space on the sides/bottom"
+     users see; removing it lets the game extend fully under the
+     notch/rounded corners instead, by explicit request — full-bleed
+     wins over notch-avoidance for this game. */
   touch-action: none;
 }
 
