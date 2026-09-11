@@ -168,6 +168,74 @@
     }
     document.addEventListener('click', tryLockLandscape, { once: true });
     document.addEventListener('touchend', tryLockLandscape, { once: true });
+
+    // On-device layout diagnostic — visit ?debug=1 to see it. Dumps the
+    // real, live numbers from whatever browser/device is actually
+    // rendering the page (viewport, safe-area insets, every ancestor box)
+    // so a real empty-space report can be diagnosed from the device's own
+    // data instead of guessing from desktop/headless testing, which has
+    // no real browser chrome (address bar, home indicator) to reproduce
+    // the gap in the first place. No effect at all without the param.
+    if (new URLSearchParams(location.search).get('debug') === '1') {
+      const probe = document.createElement('div');
+      probe.style.cssText = 'position:fixed;visibility:hidden;pointer-events:none;'
+        + 'padding-top:env(safe-area-inset-top);padding-right:env(safe-area-inset-right);'
+        + 'padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);';
+      document.body.appendChild(probe);
+
+      function dumpDebug() {
+        const wrap = document.getElementById('game-wrap');
+        const frame = document.getElementById('game-frame');
+        const canvasEl = document.getElementById('game');
+        const wrapRect = wrap.getBoundingClientRect();
+        const frameRect = frame.getBoundingClientRect();
+        const canvasRect = canvasEl.getBoundingClientRect();
+        const wrapCs = getComputedStyle(wrap);
+        const htmlCs = getComputedStyle(document.documentElement);
+        const bodyCs = getComputedStyle(document.body);
+        const probeCs = getComputedStyle(probe);
+        const vv = window.visualViewport;
+        const data = {
+          time: new Date().toISOString(),
+          userAgent: navigator.userAgent,
+          standalone: window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true,
+          devicePixelRatio: window.devicePixelRatio,
+          windowInner: { w: window.innerWidth, h: window.innerHeight },
+          visualViewport: vv ? {
+            w: vv.width, h: vv.height, offsetTop: vv.offsetTop, offsetLeft: vv.offsetLeft, scale: vv.scale,
+          } : 'unsupported',
+          documentElement: { clientW: document.documentElement.clientWidth, clientH: document.documentElement.clientHeight, computedW: htmlCs.width, computedH: htmlCs.height },
+          body: { clientW: document.body.clientWidth, clientH: document.body.clientHeight, computedH: bodyCs.height },
+          safeAreaInset: { top: probeCs.paddingTop, right: probeCs.paddingRight, bottom: probeCs.paddingBottom, left: probeCs.paddingLeft },
+          gameWrap: {
+            rect: { w: wrapRect.width, h: wrapRect.height, top: wrapRect.top, left: wrapRect.left, right: wrapRect.right, bottom: wrapRect.bottom },
+            computed: { width: wrapCs.width, height: wrapCs.height, top: wrapCs.top, left: wrapCs.left, position: wrapCs.position, padding: wrapCs.padding },
+          },
+          gameFrame: { rect: { w: frameRect.width, h: frameRect.height, top: frameRect.top, left: frameRect.left, right: frameRect.right, bottom: frameRect.bottom } },
+          canvasEl: { rect: { w: canvasRect.width, h: canvasRect.height }, attrW: canvasEl.width, attrH: canvasEl.height },
+          gapRight: window.innerWidth - frameRect.right,
+          gapBottom: window.innerHeight - frameRect.bottom,
+        };
+        let pre = document.getElementById('debug-overlay');
+        if (!pre) {
+          pre = document.createElement('pre');
+          pre.id = 'debug-overlay';
+          pre.style.cssText = 'position:fixed;inset:0;z-index:999999;background:rgba(0,0,0,0.88);'
+            + 'color:#5f5;font:11px/1.4 monospace;padding:10px;margin:0;overflow:auto;'
+            + 'white-space:pre-wrap;user-select:all;';
+          document.body.appendChild(pre);
+        }
+        pre.textContent = JSON.stringify(data, null, 2);
+      }
+      window.addEventListener('load', () => setTimeout(dumpDebug, 600));
+      window.addEventListener('resize', dumpDebug);
+      window.addEventListener('scroll', dumpDebug);
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', dumpDebug);
+        window.visualViewport.addEventListener('scroll', dumpDebug);
+      }
+      setTimeout(dumpDebug, 600);
+    }
   </script>
 </body>
 </html>
