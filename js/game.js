@@ -105,10 +105,18 @@
     return newH;
   }
 
-  // Fits the frame inside the viewport (CSS pixels), then backs the
-  // canvas with devicePixelRatio-scaled resolution so every sprite and
-  // every HUD line stays crisp instead of being upscaled from a fixed
-  // 800×H backing store.
+  // Fills the viewport completely (CSS pixels) — the frame is always
+  // exactly the available box, on every device, so there is never an
+  // empty bar down the side or across the bottom. computeLogicalHeight
+  // still picks the best-fitting logical H first to keep cropping to a
+  // minimum, but whatever mismatch remains between the logical WxH
+  // world and the real device aspect is handled by a uniform "cover"
+  // scale (same factor on X and Y, so nothing stretches) plus a
+  // centered offset — content beyond whichever axis overflows simply
+  // falls outside the canvas and is never drawn, a plain center-crop of
+  // the scenery's extremities, not a resize of anything in it. Also
+  // backs the canvas with devicePixelRatio-scaled resolution so every
+  // sprite and every HUD line stays crisp.
   function applyResolution() {
     const wrapStyle = getComputedStyle(wrap);
     const padX = parseFloat(wrapStyle.paddingLeft) + parseFloat(wrapStyle.paddingRight);
@@ -123,15 +131,8 @@
       GROUND_Y = H - GROUND_TILE_H + GROUND_SURFACE_OFFSET;
     }
 
-    const ratio = W / H;
-    let cssW = availW;
-    let cssH = cssW / ratio;
-    if (cssH > availH) {
-      cssH = availH;
-      cssW = cssH * ratio;
-    }
-    cssW = Math.max(1, Math.floor(cssW));
-    cssH = Math.max(1, Math.floor(cssH));
+    const cssW = Math.max(1, Math.floor(availW));
+    const cssH = Math.max(1, Math.floor(availH));
     frame.style.width = cssW + 'px';
     frame.style.height = cssH + 'px';
 
@@ -142,8 +143,10 @@
       canvas.width = backingW;
       canvas.height = backingH;
     }
-    const scale = backingW / W;
-    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    const scale = Math.max(backingW / W, backingH / H);
+    const offsetX = (backingW - W * scale) / 2;
+    const offsetY = (backingH - H * scale) / 2;
+    ctx.setTransform(scale, 0, 0, scale, offsetX, offsetY);
 
     if (heightChanged) {
       if (state === 'playing' && !player.jumping) player.y = GROUND_Y;
