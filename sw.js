@@ -16,8 +16,13 @@
 // removed js/skin-effects.js — it no longer exists, and cache.addAll()
 // fails its entire install if even one precached URL 404s. v4, 2026-09-05:
 // added js/achievements.js. v5, 2026-09-11: favicon.svg replaced with
-// favicon.png (new logo).)
-const CACHE_NAME = 'mariana-runner-v5';
+// favicon.png (new logo). v6, 2026-09-11: icon/favicon URLs versioned
+// with ?v=2 so Android/Chrome/desktop installs pick up new artwork right
+// away instead of waiting on HTTP cache to expire — iOS ignores this
+// (see index.html note) and still needs a manual remove/re-add. v7,
+// 2026-09-11: re-cropped the icon art to remove a baked-in black
+// border/margin around the logo; bumped to ?v=3.)
+const CACHE_NAME = 'mariana-runner-v7';
 const APP_SHELL = [
   './',
   './index.html',
@@ -29,13 +34,13 @@ const APP_SHELL = [
   './js/sprites.js',
   './js/audio.js',
   './js/game.js',
-  './assets/favicon.png',
-  './assets/icons/icon-120.png',
-  './assets/icons/icon-152.png',
-  './assets/icons/icon-167.png',
-  './assets/icons/icon-180.png',
-  './assets/icons/icon-192.png',
-  './assets/icons/icon-512.png',
+  './assets/favicon.png?v=3',
+  './assets/icons/icon-120.png?v=3',
+  './assets/icons/icon-152.png?v=3',
+  './assets/icons/icon-167.png?v=3',
+  './assets/icons/icon-180.png?v=3',
+  './assets/icons/icon-192.png?v=3',
+  './assets/icons/icon-512.png?v=3',
   './assets/sprites/bush.png',
   './assets/sprites/cactus_round.png',
   './assets/sprites/cactus_tall.png',
