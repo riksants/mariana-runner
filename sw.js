@@ -43,13 +43,18 @@
 // the game ever draws them, so nothing upscales — and re-encoded as
 // WebP, taking the boot payload from ~8.2MB to ~3.6MB. The .png copies
 // are gone, so an installed client holding them must fetch the new
-// .webp URLs.)
-const CACHE_NAME = 'mariana-runner-v13';
+// .webp URLs. v14, 2026-09-12: added js/cloud-save.js + js/account-ui.js
+// to the shell so the account screen works offline too. The Supabase
+// calls themselves are cross-origin and POST, so the fetch handler below
+// already ignores them — no change to caching strategy was needed.)
+const CACHE_NAME = 'mariana-runner-v14';
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.json',
   './css/style.css',
+  './js/cloud-save.js',
+  './js/account-ui.js',
   './js/particles.js',
   './js/skins.js',
   './js/achievements.js',

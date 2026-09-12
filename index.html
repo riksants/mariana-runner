@@ -95,6 +95,13 @@
           </div>
         </div>
         <button type="button" id="btn-wardrobe" class="pixel-btn pixel-btn--small">GUARDA-ROUPA</button>
+        <div id="account-strip">
+          <button type="button" id="btn-account" class="link-btn">ENTRAR / CRIAR CONTA</button>
+          <span id="account-signed" hidden>
+            <span id="account-nick"></span>
+            <button type="button" id="btn-signout" class="link-btn link-btn--quiet">SAIR</button>
+          </span>
+        </div>
       </div>
 
       <div id="overlay-gameover" class="overlay" hidden>
@@ -123,6 +130,29 @@
         </div>
       </div>
 
+      <div id="overlay-account" class="overlay overlay--account" hidden>
+        <h2 class="title title--small" id="account-title">ENTRAR</h2>
+        <form id="account-form" autocomplete="off">
+          <label class="field">
+            <span class="field-label">NICK</span>
+            <input type="text" id="account-nick-input" maxlength="20" autocapitalize="none"
+                   autocorrect="off" spellcheck="false" inputmode="text" required>
+          </label>
+          <label class="field">
+            <span class="field-label">SENHA</span>
+            <input type="password" id="account-pass-input" maxlength="72" required>
+          </label>
+          <label class="field" id="account-confirm-field" hidden>
+            <span class="field-label">CONFIRMAR SENHA</span>
+            <input type="password" id="account-confirm-input" maxlength="72">
+          </label>
+          <p class="account-msg" id="account-msg" role="status" aria-live="polite"></p>
+          <button type="submit" id="btn-account-submit" class="pixel-btn pixel-btn--primary">ENTRAR</button>
+        </form>
+        <button type="button" id="btn-account-toggle" class="link-btn">CRIAR UMA CONTA</button>
+        <button type="button" id="btn-account-back" class="pixel-btn pixel-btn--small">VOLTAR</button>
+      </div>
+
       <div id="overlay-wardrobe" class="overlay overlay--wardrobe" hidden>
         <div id="wardrobe-header">
           <h2 class="title title--small">GUARDA-ROUPA</h2>
@@ -144,12 +174,17 @@
 
   <div id="sr-announcer" class="sr-only" aria-live="polite"></div>
 
+  <!-- Antes dos demais: instala o observador das chaves de save logo no
+       início, para nenhuma gravação do jogo passar despercebida. -->
+  <script src="js/cloud-save.js"></script>
   <script src="js/particles.js"></script>
   <script src="js/skins.js"></script>
   <script src="js/achievements.js"></script>
   <script src="js/sprites.js"></script>
   <script src="js/audio.js"></script>
   <script src="js/game.js"></script>
+  <!-- Depois do game.js: a tela de conta só mexe no DOM, nunca no jogo. -->
+  <script src="js/account-ui.js"></script>
 
   <script>
     // PWA install support: offline app-shell cache.
