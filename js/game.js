@@ -1449,9 +1449,15 @@
       ctx.fillStyle = art.sky;
       ctx.fillRect(0, 0, W, H);
       const bgImg = SPRITES[art.sprite];
-      const bgH = Math.min(200, gY * 0.78);
-      const bgW = spriteWidthForHeight(bgImg, bgH);
-      ctx.drawImage(bgImg, (W - bgW) / 2, gY - bgH, bgW, bgH);
+      // Scaled to the full canvas width (not a small centered box) so it
+      // spans edge-to-edge like the desert's mountain silhouette does —
+      // a small centered image left a visible rectangular seam against
+      // the flat sky fill around it. Anchored to the ground line; any
+      // leftover sky above (when the image's own height at this width
+      // is shorter than the available space) is just more flat sky,
+      // which reads naturally instead of as a floating box.
+      const bgH = Math.min(gY, W / (bgImg.naturalWidth / bgImg.naturalHeight));
+      ctx.drawImage(bgImg, 0, gY - bgH, W, bgH);
     } else {
       ctx.fillStyle = '#f3ead9';
       ctx.fillRect(0, 0, W, H);
