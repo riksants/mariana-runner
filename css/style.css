@@ -389,6 +389,45 @@ html, body {
   background: #171717;
 }
 
+/* Portal transition ("next biome" loading screen): a dark low-opacity
+   scrim (not the paper-colored one every other overlay uses) so the
+   atmospheric preview of the next biome, drawn on the canvas behind
+   it, stays clearly visible through the text. */
+.overlay--transition {
+  background: rgba(20, 16, 10, 0.34);
+  z-index: 2;
+}
+
+.overlay--transition .title {
+  color: #f3ead9;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.4);
+}
+
+.transition-loader {
+  display: flex;
+  gap: clamp(6px, 1.6vmin, 10px);
+}
+
+.transition-loader span {
+  width: clamp(8px, 1.8vmin, 12px);
+  height: clamp(8px, 1.8vmin, 12px);
+  background: #f3ead9;
+  border: 2px solid #2b2b2b;
+  animation: transition-bounce 0.9s ease-in-out infinite;
+}
+
+.transition-loader span:nth-child(2) { animation-delay: 0.15s; }
+.transition-loader span:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes transition-bounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.6; }
+  40% { transform: translateY(-10px); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .transition-loader span { animation: none; }
+}
+
 .loading-label {
   margin: 0;
   font-family: var(--font-display);

@@ -42,6 +42,7 @@
     start: document.getElementById('overlay-start'),
     pause: document.getElementById('overlay-pause'),
     gameover: document.getElementById('overlay-gameover'),
+    transition: document.getElementById('overlay-transition'),
   };
   const overlayWardrobe = document.getElementById('overlay-wardrobe');
   const wardrobeGrid = document.getElementById('wardrobe-grid');
@@ -435,50 +436,75 @@
     return Math.min(MAX_SPEED, BASE_SPEED + score * SPEED_PER_POINT);
   }
 
-  // Biome swap: purely score-driven, so a new run always starts back in
-  // the desert without any extra reset code. Cycles endlessly through the
-  // list, BIOME_SCORE_STEP points per stage (0-4999 desert, 5000-9999
-  // selva, 10000-14999 neve, 15000-19999 vulcao, then repeats).
-  const BIOME_SCORE_STEP = 5000;
+  // Biome swap: index-driven, not score-driven. biomeIndex only ever
+  // changes at the instant a portal transition completes (see
+  // completeBiomeTransition below) — it deliberately never reads score
+  // directly, so there is exactly one advance per portal, however long
+  // the player lingers before or after touching it. Cycles endlessly
+  // through the list. A new run always starts back in the desert
+  // (biomeIndex reset to 0 in startGame()).
+  const BIOME_SCORE_STEP = 7000;
   const BIOME_ORDER = ['desert', 'selva', 'neve', 'vulcao'];
+  let biomeIndex = 0;
   function activeBiome() {
-    return BIOME_ORDER[Math.floor(score / BIOME_SCORE_STEP) % BIOME_ORDER.length];
+    return BIOME_ORDER[biomeIndex % BIOME_ORDER.length];
   }
 
-  // The region change plays out as a hard physical boundary sweeping
-  // across the screen over BIOME_TRANSITION_DURATION seconds — the old
-  // biome stays fully rendered to the right of the boundary (behind
-  // Mariana as she "runs into" new territory) while the new biome fills
-  // in from the right edge leftward. No alpha/opacity anywhere in this:
-  // it's a hard clip, deliberately not a fade (see drawBackground).
-  // biomeTransition/lastBiomeIndex are mutable run state, reset in
-  // startGame() alongside every other run-state variable.
-  const BIOME_TRANSITION_DURATION = 10;
-  let lastBiomeIndex = 0;
-  let biomeTransition = { active: false, from: 'desert', to: 'desert', t: 0 };
-  function updateBiomeTransition(dt) {
-    const idx = Math.floor(score / BIOME_SCORE_STEP);
-    if (idx !== lastBiomeIndex) {
-      biomeTransition = {
-        active: true,
-        from: BIOME_ORDER[lastBiomeIndex % BIOME_ORDER.length],
-        to: BIOME_ORDER[idx % BIOME_ORDER.length],
-        t: 0,
-      };
-      lastBiomeIndex = idx;
-    }
-    if (biomeTransition.active) {
-      biomeTransition.t += dt;
-      if (biomeTransition.t >= BIOME_TRANSITION_DURATION) biomeTransition.active = false;
-    }
+  // Portal + loading-screen state. A portal appears once per checkpoint
+  // (every BIOME_SCORE_STEP points) and, when touched, opens a short
+  // "next biome loading" state before the run resumes seamlessly — see
+  // maybeSpawnPortal/beginBiomeTransition/completeBiomeTransition below.
+  const PORTAL_W = 70;
+  const PORTAL_H = 140;
+  const PORTAL_LOADING_DURATION = 2.5; // seconds, real time
+  let portal = null; // { x, w, h, t, triggered } while pending/active on screen, else null
+  // Count of checkpoints already turned into a portal this run. Spawning
+  // is gated on `score >= portalsSpawned+1 checkpoints` AND `!portal`,
+  // and portalsSpawned increments the instant a portal spawns — so this
+  // is an index/state check, never a bare `score >= 7000` comparison
+  // that could re-trigger while score keeps climbing.
+  let portalsSpawned = 0;
+  let pendingBiomeIndex = 0;
+  let transitionTimer = 0;
+
+  function maybeSpawnPortal() {
+    if (portal) return;
+    const nextCheckpoint = portalsSpawned + 1;
+    if (score < nextCheckpoint * BIOME_SCORE_STEP) return;
+    portalsSpawned = nextCheckpoint;
+    // Clear the field so nothing already on screen can block the path to
+    // the portal that's about to appear.
+    obstacles = [];
+    portal = { x: W + 240, w: PORTAL_W, h: PORTAL_H, t: 0, triggered: false };
   }
-  // { boundaryX, from, to } while a transition is playing, else null. The
-  // boundary starts at the right edge (nothing of the new biome visible
-  // yet) and sweeps to x=0 over the transition duration.
-  function activeTransitionFrame() {
-    if (!biomeTransition.active) return null;
-    const frac = Math.min(1, biomeTransition.t / BIOME_TRANSITION_DURATION);
-    return { boundaryX: W * (1 - frac), from: biomeTransition.from, to: biomeTransition.to };
+
+  function beginBiomeTransition() {
+    pendingBiomeIndex = (biomeIndex + 1) % BIOME_ORDER.length;
+    transitionTimer = 0;
+    obstacles = [];
+    decor = [];
+    powerups = [];
+    coins = [];
+    portal = null;
+    setState('transition');
+  }
+
+  function updatePortalTransition(dt) {
+    transitionTimer += dt;
+    if (transitionTimer >= PORTAL_LOADING_DURATION) completeBiomeTransition();
+  }
+
+  // Score, coins, equipped skin and every save/localStorage value are
+  // untouched here — this only swaps which biome's art/obstacles are
+  // active and resumes play, exactly like a normal in-run state change,
+  // never a restart.
+  function completeBiomeTransition() {
+    biomeIndex = pendingBiomeIndex;
+    scheduleNextSpawn();
+    scheduleNextDecor();
+    schedulePowerupSpawn();
+    scheduleNextCoinCluster();
+    setState('playing');
   }
 
   // Scenery art per biome. Desert keeps its original tiling-silhouette
@@ -489,9 +515,9 @@
   // lookup to fall back to the original desert-specific code path.
   const BIOME_ART = {
     desert: { cloud: 'cloudBig', cloud2: 'cloudSmall1' },
-    selva: { sprite: 'selvaBg', sky: '#eff4f1', ground: 'selvaGround', cloud: 'selvaCloud' },
-    neve: { sprite: 'neveBg', sky: '#f4f6fa', ground: 'neveGround', cloud: 'neveCloud' },
-    vulcao: { sprite: 'vulcaoBg', sky: '#dcd0cf', ground: 'vulcaoGround', cloud: 'vulcaoCloud' },
+    selva: { sprite: 'selvaBg', sky: '#eff4f1', ground: 'selvaGround', cloud: 'selvaCloud', cloud2: 'selvaCloud2' },
+    neve: { sprite: 'neveBg', sky: '#f4f6fa', ground: 'neveGround', cloud: 'neveCloud', cloud2: 'neveCloud2' },
+    vulcao: { sprite: 'vulcaoBg', sky: '#dcd0cf', ground: 'vulcaoGround', cloud: 'vulcaoCloud', cloud2: 'vulcaoCloud2' },
   };
 
   // Ground-obstacle sprites are per biome — desert's cactus/rock set must
@@ -627,9 +653,19 @@
     distanceSinceLastDecor = 0;
   }
 
-  const DECOR_TYPES = ['bush', 'sign', 'fence'];
+  // Decorative (non-collidable) scenery is per biome, same reasoning as
+  // BIOME_OBSTACLE_SPRITES above — a spawn always reads the biome fresh
+  // via activeBiome(), so desert's bush/sign/fence never appears once a
+  // biome swap has happened, and vice versa.
+  const DECOR_TYPES = {
+    desert: ['bush', 'sign', 'fence'],
+    selva: ['selvaDecor1', 'selvaDecor2'],
+    neve: ['neveDecor1', 'neveDecor2'],
+    vulcao: ['vulcaoDecor1', 'vulcaoDecor2'],
+  };
   function spawnDecor() {
-    const key = DECOR_TYPES[Math.floor(Math.random() * DECOR_TYPES.length)];
+    const types = DECOR_TYPES[activeBiome()] || DECOR_TYPES.desert;
+    const key = types[Math.floor(Math.random() * types.length)];
     const img = SPRITES[key];
     const w = spriteWidthForHeight(img, DECOR_H);
     decor.push({ x: W + 10, w, h: DECOR_H, key });
@@ -806,11 +842,12 @@
     overlays.start.hidden = next !== 'start';
     overlays.pause.hidden = next !== 'paused';
     overlays.gameover.hidden = next !== 'gameover';
+    overlays.transition.hidden = next !== 'transition';
     btnPause.hidden = !(next === 'playing' || next === 'paused');
     btnPause.setAttribute('aria-label', next === 'paused' ? 'Continuar' : 'Pausar');
     btnPause.querySelector('.icon-pause').hidden = next === 'paused';
     btnPause.querySelector('.icon-play').hidden = next !== 'paused';
-    hud.hidden = !(next === 'playing' || next === 'paused' || next === 'gameover');
+    hud.hidden = !(next === 'playing' || next === 'paused' || next === 'gameover' || next === 'transition');
 
     if (next === 'start' && !seenHint) {
       tapHint.classList.add('is-visible');
@@ -944,8 +981,11 @@
     milestoneFloor = 0;
     lastMilestoneTime = -Infinity;
     elapsed = 0;
-    lastBiomeIndex = 0;
-    biomeTransition = { active: false, from: 'desert', to: 'desert', t: 0 };
+    biomeIndex = 0;
+    pendingBiomeIndex = 0;
+    portalsSpawned = 0;
+    portal = null;
+    transitionTimer = 0;
     obstacles = [];
     decor = [];
     powerups = [];
@@ -1149,7 +1189,7 @@
     elapsed += dt;
     const speed = currentSpeed();
     score += dt * (speed / 6.5) * scoreMultiplier;
-    updateBiomeTransition(dt);
+    maybeSpawnPortal();
 
     const flooredScore = Math.floor(score);
     if (flooredScore >= milestoneFloor + 100) {
@@ -1228,11 +1268,23 @@
       }
     }
 
+    // --- portal ---
+    // Spawning (and all other spawn timers below) is suppressed for as
+    // long as a portal is pending/on screen, guaranteeing the stretch
+    // between here and the portal — and the portal itself — is never
+    // blocked by an obstacle.
+    if (portal) {
+      portal.x -= speed * dt;
+      portal.t += dt;
+    }
+
     // --- obstacles ---
-    distanceSinceLastSpawn += speed * dt;
-    if (distanceSinceLastSpawn >= nextSpawnGap) {
-      spawnObstacleGroup();
-      scheduleNextSpawn();
+    if (!portal) {
+      distanceSinceLastSpawn += speed * dt;
+      if (distanceSinceLastSpawn >= nextSpawnGap) {
+        spawnObstacleGroup();
+        scheduleNextSpawn();
+      }
     }
     for (const o of obstacles) o.x -= speed * dt;
     // An obstacle only ever reaches this off-screen threshold by having
@@ -1244,28 +1296,34 @@
     obstacles = obstacles.filter(o => o.x + o.w > -10);
 
     // --- decor ---
-    distanceSinceLastDecor += speed * dt;
-    if (distanceSinceLastDecor >= nextDecorGap) {
-      spawnDecor();
-      scheduleNextDecor();
+    if (!portal) {
+      distanceSinceLastDecor += speed * dt;
+      if (distanceSinceLastDecor >= nextDecorGap) {
+        spawnDecor();
+        scheduleNextDecor();
+      }
     }
     for (const d of decor) d.x -= speed * dt;
     decor = decor.filter(d => d.x + d.w > -10);
 
     // --- power-ups ---
-    distanceSinceLastPowerup += speed * dt;
-    if (distanceSinceLastPowerup >= nextPowerupGap) {
-      if (score >= POWERUP_MIN_SCORE) spawnPowerup();
-      schedulePowerupSpawn();
+    if (!portal) {
+      distanceSinceLastPowerup += speed * dt;
+      if (distanceSinceLastPowerup >= nextPowerupGap) {
+        if (score >= POWERUP_MIN_SCORE) spawnPowerup();
+        schedulePowerupSpawn();
+      }
     }
     for (const p of powerups) p.x -= speed * dt;
     powerups = powerups.filter(p => p.x + p.w > -10);
 
     // --- coins ---
-    distanceSinceLastCoinCluster += speed * dt;
-    if (distanceSinceLastCoinCluster >= nextCoinGap) {
-      spawnCoinCluster();
-      scheduleNextCoinCluster();
+    if (!portal) {
+      distanceSinceLastCoinCluster += speed * dt;
+      if (distanceSinceLastCoinCluster >= nextCoinGap) {
+        spawnCoinCluster();
+        scheduleNextCoinCluster();
+      }
     }
     for (const c of coins) c.x -= speed * dt;
     coins = coins.filter(c => c.x + c.w > -10);
@@ -1307,6 +1365,19 @@
       }
     }
     if (collectedCoins.length) coins = coins.filter(c => !collectedCoins.includes(c));
+
+    // Portal touch is a checkpoint, never a hazard — a generous, forgiving
+    // box (same spirit as the power-up pickup box above) so grazing the
+    // portal always counts as reaching it, and it can never itself end
+    // the run.
+    if (portal && !portal.triggered) {
+      const portalX = portal.x;
+      const portalY = GROUND_Y - portal.h;
+      if (px < portalX + portal.w && px + pw > portalX && hitboxY < portalY + portal.h && hitboxY + hitboxH > portalY) {
+        portal.triggered = true;
+        beginBiomeTransition();
+      }
+    }
 
     for (const o of obstacles) {
       const ox = o.x + o.w * 0.18;
@@ -1500,17 +1571,9 @@
     }
   }
 
-  // Which biome a cloud at world-relative x should render as: on the far
-  // (old-biome) side of a sweeping boundary it keeps the outgoing biome's
-  // look, past the boundary it's already in the new region.
-  function biomeForX(x, trans) {
-    if (!trans) return activeBiome();
-    return x < trans.boundaryX ? trans.from : trans.to;
-  }
-
-  function drawClouds(trans) {
+  function drawClouds(biomeName) {
+    const art = BIOME_ART[biomeName];
     for (const c of clouds) {
-      const art = BIOME_ART[biomeForX(c.x, trans)];
       const img = SPRITES[art[c.role] || art.cloud];
       const h = 70 * c.scale;
       const w = spriteWidthForHeight(img, h);
@@ -1518,48 +1581,17 @@
     }
   }
 
-  // A soft vertical shadow marking the physical seam between two biomes
-  // while a transition is sweeping across the screen — a real dividing
-  // line, not a fade, matching the "new region entered, old one left
-  // behind" feel instead of looking like a screen edit.
-  function drawBiomeSeam(boundaryX) {
-    const seamW = 16;
-    const grad = ctx.createLinearGradient(boundaryX - seamW / 2, 0, boundaryX + seamW / 2, 0);
-    grad.addColorStop(0, 'rgba(20,16,10,0)');
-    grad.addColorStop(0.5, 'rgba(20,16,10,0.25)');
-    grad.addColorStop(1, 'rgba(20,16,10,0)');
-    ctx.save();
-    ctx.fillStyle = grad;
-    ctx.fillRect(boundaryX - seamW / 2, 0, seamW, H);
-    ctx.restore();
-  }
-
-  function drawBackground() {
+  // Draws exactly one biome — the active one during normal play, or an
+  // explicit override for the "next biome" atmospheric preview shown
+  // behind the portal loading screen. There is never a second biome
+  // drawn underneath/behind this one, so a clean cutover is guaranteed:
+  // the instant the loading overlay hides, only the new biome exists.
+  function drawBackground(biomeName) {
     const gY = H - GROUND_TILE_H;
-    const trans = activeTransitionFrame();
-
-    drawBiomeSkyAndBackdrop(trans ? trans.to : activeBiome(), gY);
-    if (trans) {
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(0, 0, trans.boundaryX, H);
-      ctx.clip();
-      drawBiomeSkyAndBackdrop(trans.from, gY);
-      ctx.restore();
-    }
-
-    drawClouds(trans);
-
-    drawBiomeGround(trans ? trans.to : activeBiome(), gY);
-    if (trans) {
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(0, 0, trans.boundaryX, H);
-      ctx.clip();
-      drawBiomeGround(trans.from, gY);
-      ctx.restore();
-      drawBiomeSeam(trans.boundaryX);
-    }
+    const biome = biomeName || activeBiome();
+    drawBiomeSkyAndBackdrop(biome, gY);
+    drawClouds(biome);
+    drawBiomeGround(biome, gY);
   }
 
   function drawDecor() {
@@ -1625,6 +1657,55 @@
     }
   }
 
+  // Canvas-drawn portal: no sprite exists for it in any reference sheet,
+  // so it's built from the same flat-shape-plus-dark-outline vocabulary
+  // as the coin/power-up icons (see drawCoins/drawPowerups above), with
+  // a soft glow and a slow particle swirl for motion/energy.
+  function drawPortal() {
+    if (!portal) return;
+    const cx = portal.x + portal.w / 2;
+    const cy = GROUND_Y - portal.h / 2;
+    const t = portal.t;
+    const pulse = 0.5 + 0.5 * Math.sin(t * 3);
+
+    ctx.save();
+    const glow = ctx.createRadialGradient(cx, cy, portal.w * 0.1, cx, cy, portal.w * 0.95);
+    glow.addColorStop(0, `rgba(150, 210, 255, ${0.5 + pulse * 0.25})`);
+    glow.addColorStop(1, 'rgba(150, 210, 255, 0)');
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, portal.w * 0.95, portal.h * 0.62, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#1c2b4a';
+    ctx.strokeStyle = '#2b2b2b';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, portal.w * 0.42, portal.h * 0.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.strokeStyle = `rgba(205, 232, 255, ${0.65 + pulse * 0.3})`;
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 3; i++) {
+      const rr = portal.w * (0.14 + i * 0.09);
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, rr, rr * (portal.h / portal.w) * 0.55, t * (1 + i * 0.4), 0, Math.PI * 1.5);
+      ctx.stroke();
+    }
+
+    for (let i = 0; i < 5; i++) {
+      const ang = t * 2.2 + (i / 5) * Math.PI * 2;
+      const sx = cx + Math.cos(ang) * portal.w * 0.5;
+      const sy = cy + Math.sin(ang) * portal.h * 0.45;
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.beginPath();
+      ctx.arc(sx, sy, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
   function render() {
     const shake = ScreenShake.offset();
     ctx.save();
@@ -1635,12 +1716,19 @@
       drawDecor();
       drawCat();
       drawPlayer();
+    } else if (state === 'transition') {
+      // Atmospheric preview of the NEXT biome only — no player, cat,
+      // obstacles or decor from the old biome linger behind the loading
+      // overlay, and nothing of the new biome's own obstacles/decor
+      // exists yet either (they were cleared in beginBiomeTransition).
+      drawBackground(BIOME_ORDER[pendingBiomeIndex]);
     } else {
       drawBackground();
       drawDecor();
       drawObstacles();
       drawPowerups();
       drawCoins();
+      if (portal) drawPortal();
       drawCat();
       drawPlayer();
       if (shieldActive) drawShieldHalo();
@@ -1676,6 +1764,7 @@
     lastTime = timestamp;
 
     if (state === 'start') updateIdleAnimation(dt);
+    if (state === 'transition') updatePortalTransition(dt);
     if (state !== 'paused') update(dt);
     else { ScreenShake.update(0); }
     render();

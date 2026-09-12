@@ -29,8 +29,14 @@
 // (real transparency) and full-width biome backdrops (no more visible
 // box seam) — same filenames again, bumped again. v10, 2026-09-12:
 // re-cropped biome_vulcao_bg.png to exclude a leftover dark corner
-// fragment from the reference sheet border.)
-const CACHE_NAME = 'mariana-runner-v10';
+// fragment from the reference sheet border. v11, 2026-09-12: biome
+// system replaced again — new selva/neve/vulcao art (fresh source
+// sheets, real alpha) at new filenames (biome_*_cloud2.png,
+// biome_decor_*_1/2.png added; old biome_obstacle_*.png etc. replaced
+// in place), old sweep-transition code removed in favor of a portal
+// checkpoint every 7000 points + a loading-screen cutover; index.html
+// gained #overlay-transition.)
+const CACHE_NAME = 'mariana-runner-v11';
 const APP_SHELL = [
   './',
   './index.html',
