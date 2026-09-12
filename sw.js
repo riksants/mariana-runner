@@ -35,8 +35,11 @@
 // biome_decor_*_1/2.png added; old biome_obstacle_*.png etc. replaced
 // in place), old sweep-transition code removed in favor of a portal
 // checkpoint every 7000 points + a loading-screen cutover; index.html
-// gained #overlay-transition.)
-const CACHE_NAME = 'mariana-runner-v11';
+// gained #overlay-transition. v12, 2026-09-12: illustrated portal art
+// replaces the canvas-drawn placeholder, and selva/neve/vulcao were
+// rebuilt from new reference sheets — every biome_* filename is reused,
+// so an installed copy would otherwise keep serving the old art.)
+const CACHE_NAME = 'mariana-runner-v12';
 const APP_SHELL = [
   './',
   './index.html',

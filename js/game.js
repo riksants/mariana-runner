@@ -48,6 +48,7 @@
   const wardrobeGrid = document.getElementById('wardrobe-grid');
   const wardrobeCoinsValue = document.getElementById('wardrobe-coins-value');
   const menuCoinsValue = document.getElementById('menu-coins-value');
+  const menuRecordValue = document.getElementById('menu-record-value');
   const btnWardrobe = document.getElementById('btn-wardrobe');
   const btnWardrobeGameover = document.getElementById('btn-wardrobe-gameover');
   const btnWardrobeBack = document.getElementById('btn-wardrobe-back');
@@ -454,10 +455,40 @@
   // (every BIOME_SCORE_STEP points) and, when touched, opens a short
   // "next biome loading" state before the run resumes seamlessly — see
   // maybeSpawnPortal/beginBiomeTransition/completeBiomeTransition below.
-  const PORTAL_W = 70;
-  const PORTAL_H = 140;
+  // One illustrated portal per biome the portal appears IN — the scene
+  // framed inside each arch previews the biome it leads to. Each sheet
+  // surrounds its artwork with a wide margin of near-transparent glow,
+  // embers and drifting leaves, so every measurement below is taken from
+  // the artwork's own bounds (left/top/right/bottom as fractions of the
+  // full image) rather than the padded canvas: that way the portal's
+  // visible height is what gets matched to Mariana and its base is what
+  // lands on the ground line, while the image itself is still drawn
+  // whole and unmodified, faint glow included.
+  const PORTAL_ART = {
+    desert: { key: 'portalDesert', left: 0.2072, top: 0.0424, right: 0.8364, bottom: 0.9584 },
+    selva: { key: 'portalSelva', left: 0.2339, top: 0.0371, right: 0.9371, bottom: 0.9385 },
+    neve: { key: 'portalNeve', left: 0.2210, top: 0.0181, right: 0.9089, bottom: 0.9685 },
+    vulcao: { key: 'portalVulcao', left: 0.1032, top: 0.0268, right: 0.9258, bottom: 0.9771 },
+  };
+  // Portal height as a multiple of Mariana's own rendered height. The
+  // arch takes up roughly half of each sheet's height, so this is sized
+  // by the opening rather than the frame: at 2x she clears the doorway
+  // with room to spare, which is what makes her read as running into the
+  // portal instead of past a roadside marker. Measured against
+  // GIRL_H_BASE rather than currentGirlH() so the portal is a fixed part
+  // of the world — the "mini" skin shrinks Mariana, not the scenery she
+  // runs through.
+  const PORTAL_HEIGHT_RATIO = 2.0;
+  // Horizontal slice of the artwork treated as the doorway for the
+  // checkpoint touch — the arch's stonework sits off to the right in
+  // every sheet, so the opening is a little left of centre.
+  const PORTAL_DOORWAY_START = 0.25;
+  const PORTAL_DOORWAY_END = 0.65;
   const PORTAL_LOADING_DURATION = 2.5; // seconds, real time
-  let portal = null; // { x, w, h, t, triggered } while pending/active on screen, else null
+  // { x, w, h, art, drawW, drawH, t, triggered } while pending/active on
+  // screen, else null. x/w/h describe the artwork (x is its left edge, as
+  // with an obstacle); drawW/drawH are the full image's drawn size.
+  let portal = null;
   // Count of checkpoints already turned into a portal this run. Spawning
   // is gated on `score >= portalsSpawned+1 checkpoints` AND `!portal`,
   // and portalsSpawned increments the instant a portal spawns — so this
@@ -475,7 +506,21 @@
     // Clear the field so nothing already on screen can block the path to
     // the portal that's about to appear.
     obstacles = [];
-    portal = { x: W + 240, w: PORTAL_W, h: PORTAL_H, t: 0, triggered: false };
+    const art = PORTAL_ART[activeBiome()];
+    const img = SPRITES[art.key];
+    const h = GIRL_H_BASE * PORTAL_HEIGHT_RATIO;
+    const drawH = h / (art.bottom - art.top);
+    const drawW = drawH * (img.naturalWidth / img.naturalHeight);
+    portal = {
+      x: W + 240,
+      w: (art.right - art.left) * drawW,
+      h,
+      art,
+      drawW,
+      drawH,
+      t: 0,
+      triggered: false,
+    };
   }
 
   function beginBiomeTransition() {
@@ -515,9 +560,9 @@
   // lookup to fall back to the original desert-specific code path.
   const BIOME_ART = {
     desert: { cloud: 'cloudBig', cloud2: 'cloudSmall1' },
-    selva: { sprite: 'selvaBg', sky: '#eff4f1', ground: 'selvaGround', cloud: 'selvaCloud', cloud2: 'selvaCloud2' },
-    neve: { sprite: 'neveBg', sky: '#f4f6fa', ground: 'neveGround', cloud: 'neveCloud', cloud2: 'neveCloud2' },
-    vulcao: { sprite: 'vulcaoBg', sky: '#dcd0cf', ground: 'vulcaoGround', cloud: 'vulcaoCloud', cloud2: 'vulcaoCloud2' },
+    selva: { mountains: 'selvaBg', sky: '#eff4f1', ground: 'selvaGround', cloud: 'selvaCloud', cloud2: 'selvaCloud2' },
+    neve: { mountains: 'neveBg', sky: '#f4f6fa', ground: 'neveGround', cloud: 'neveCloud', cloud2: 'neveCloud2' },
+    vulcao: { mountains: 'vulcaoBg', sky: '#dcd0cf', ground: 'vulcaoGround', cloud: 'vulcaoCloud', cloud2: 'vulcaoCloud2' },
   };
 
   // Ground-obstacle sprites are per biome — desert's cactus/rock set must
@@ -1054,6 +1099,8 @@
   function updateHud() {
     hudScoreValue.textContent = String(Math.floor(score)).padStart(5, '0');
     hudHiscoreValue.textContent = String(highScore).padStart(5, '0');
+    // Same stored best, just grouped for the menu instead of zero-padded.
+    menuRecordValue.textContent = highScore.toLocaleString('pt-BR');
   }
 
   function updateCoinsHud() {
@@ -1371,9 +1418,10 @@
     // portal always counts as reaching it, and it can never itself end
     // the run.
     if (portal && !portal.triggered) {
-      const portalX = portal.x;
-      const portalY = GROUND_Y - portal.h;
-      if (px < portalX + portal.w && px + pw > portalX && hitboxY < portalY + portal.h && hitboxY + hitboxH > portalY) {
+      const doorX = portal.x + portal.w * PORTAL_DOORWAY_START;
+      const doorW = portal.w * (PORTAL_DOORWAY_END - PORTAL_DOORWAY_START);
+      const doorY = GROUND_Y - portal.h;
+      if (px < doorX + doorW && px + pw > doorX && hitboxY < doorY + portal.h && hitboxY + hitboxH > doorY) {
         portal.triggered = true;
         beginBiomeTransition();
       }
@@ -1530,10 +1578,15 @@
       const bgH = Math.min(gY, W / (bgImg.naturalWidth / bgImg.naturalHeight));
       ctx.drawImage(bgImg, 0, gY - bgH, W, bgH);
     } else {
-      ctx.fillStyle = '#f3ead9';
+      // Tiled low-horizon range over a flat sky: lots of open sky, a
+      // range that repeats across the full width with no edge to run
+      // out of, and the character left as the focus. Desert defines
+      // this look and falls through with no keys of its own; a biome
+      // opting in just names its own sky colour and range sprite.
+      ctx.fillStyle = art.sky || '#f3ead9';
       ctx.fillRect(0, 0, W, H);
 
-      const mImg = SPRITES.mountains;
+      const mImg = SPRITES[art.mountains || 'mountains'];
       const mH = 96;
       const mW = spriteWidthForHeight(mImg, mH);
       const mY = GROUND_Y - mH + 30;
@@ -1657,53 +1710,15 @@
     }
   }
 
-  // Canvas-drawn portal: no sprite exists for it in any reference sheet,
-  // so it's built from the same flat-shape-plus-dark-outline vocabulary
-  // as the coin/power-up icons (see drawCoins/drawPowerups above), with
-  // a soft glow and a slow particle swirl for motion/energy.
+  // The whole sheet is drawn untouched; portal.x/h track the artwork
+  // inside it, so the transparent glow margin hangs outside the box
+  // without shifting where the portal stands (see PORTAL_ART above).
   function drawPortal() {
     if (!portal) return;
-    const cx = portal.x + portal.w / 2;
-    const cy = GROUND_Y - portal.h / 2;
-    const t = portal.t;
-    const pulse = 0.5 + 0.5 * Math.sin(t * 3);
-
-    ctx.save();
-    const glow = ctx.createRadialGradient(cx, cy, portal.w * 0.1, cx, cy, portal.w * 0.95);
-    glow.addColorStop(0, `rgba(150, 210, 255, ${0.5 + pulse * 0.25})`);
-    glow.addColorStop(1, 'rgba(150, 210, 255, 0)');
-    ctx.fillStyle = glow;
-    ctx.beginPath();
-    ctx.ellipse(cx, cy, portal.w * 0.95, portal.h * 0.62, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#1c2b4a';
-    ctx.strokeStyle = '#2b2b2b';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.ellipse(cx, cy, portal.w * 0.42, portal.h * 0.5, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.strokeStyle = `rgba(205, 232, 255, ${0.65 + pulse * 0.3})`;
-    ctx.lineWidth = 2;
-    for (let i = 0; i < 3; i++) {
-      const rr = portal.w * (0.14 + i * 0.09);
-      ctx.beginPath();
-      ctx.ellipse(cx, cy, rr, rr * (portal.h / portal.w) * 0.55, t * (1 + i * 0.4), 0, Math.PI * 1.5);
-      ctx.stroke();
-    }
-
-    for (let i = 0; i < 5; i++) {
-      const ang = t * 2.2 + (i / 5) * Math.PI * 2;
-      const sx = cx + Math.cos(ang) * portal.w * 0.5;
-      const sy = cy + Math.sin(ang) * portal.h * 0.45;
-      ctx.fillStyle = 'rgba(255,255,255,0.85)';
-      ctx.beginPath();
-      ctx.arc(sx, sy, 2.2, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.restore();
+    const img = SPRITES[portal.art.key];
+    const x = portal.x - portal.art.left * portal.drawW;
+    const y = GROUND_Y - portal.art.bottom * portal.drawH;
+    ctx.drawImage(img, x, y, portal.drawW, portal.drawH);
   }
 
   function render() {

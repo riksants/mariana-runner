@@ -312,6 +312,18 @@ html, body {
   padding: 16px;
 }
 
+/* ---------- Start screen ----------
+   The menu sits straight on the desert instead of behind the shared
+   translucent wash: that wash is what made Mariana, the cat and the
+   mountains look faded on the one screen where the scenery is the whole
+   picture. Every element below therefore carries its own contrast —
+   filled buttons, bordered pills, a shadowed title — so nothing needs a
+   sheet of paper over the art to stay legible. */
+.overlay--start {
+  background: transparent;
+  gap: clamp(7px, 1.8vmin, 13px);
+}
+
 .title {
   margin: 0;
   font-family: var(--font-display);
@@ -319,6 +331,81 @@ html, body {
   color: var(--ink);
   line-height: 1.4;
   letter-spacing: 1px;
+}
+
+.title--game {
+  display: flex;
+  align-items: center;
+  gap: clamp(6px, 1.4vmin, 12px);
+  font-size: clamp(19px, 6.2vmin, 42px);
+  letter-spacing: clamp(1px, 0.4vmin, 3px);
+  text-shadow: 0 3px 0 var(--paper-dim);
+}
+
+.title-heart {
+  width: clamp(11px, 2.8vmin, 19px);
+  height: clamp(11px, 2.8vmin, 19px);
+  flex: none;
+  stroke: var(--accent);
+}
+
+.title-rule {
+  display: flex;
+  align-items: center;
+  gap: clamp(7px, 1.6vmin, 12px);
+  margin-top: clamp(-4px, -0.8vmin, -2px);
+}
+
+.title-rule::before,
+.title-rule::after {
+  content: '';
+  width: clamp(26px, 7vmin, 58px);
+  height: 3px;
+  background: var(--ink);
+  opacity: 0.5;
+}
+
+.title-rule-heart {
+  width: clamp(10px, 2.4vmin, 16px);
+  height: clamp(10px, 2.4vmin, 16px);
+  color: var(--accent);
+}
+
+#menu-stats {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(4px, 1vmin, 7px);
+}
+
+.menu-pill {
+  background: rgba(243, 234, 217, 0.9);
+  border: 2px solid var(--ink);
+  border-radius: 4px;
+  padding: clamp(4px, 1vmin, 7px) clamp(10px, 2.4vmin, 16px);
+  /* #game-frame sets line-height:0 for its own layout; without restoring
+     it here the text sits on a zero-height line box and spills over the
+     pill's border. */
+  line-height: 1.15;
+}
+
+#menu-record {
+  display: flex;
+  align-items: center;
+  gap: clamp(6px, 1.4vmin, 10px);
+  font-family: var(--font-display);
+  font-size: clamp(8px, 1.8vmin, 11px);
+  color: var(--muted);
+  border-color: var(--muted);
+  background: rgba(243, 234, 217, 0.78);
+}
+
+.menu-pill-label {
+  letter-spacing: 1px;
+}
+
+#menu-record-value {
+  color: var(--ink);
 }
 
 .title--small {
@@ -387,6 +474,34 @@ html, body {
 
 .pixel-btn--primary:hover {
   background: #171717;
+}
+
+/* Start-screen hierarchy: COMEÇAR is the one thing to press, GUARDA-ROUPA
+   is the quieter alternative. */
+.pixel-btn--hero {
+  display: flex;
+  align-items: center;
+  gap: clamp(8px, 1.8vmin, 14px);
+  font-size: clamp(12px, 3.2vmin, 19px);
+  letter-spacing: clamp(1px, 0.4vmin, 3px);
+  padding: clamp(11px, 2.4vmin, 17px) clamp(24px, 5.6vmin, 42px);
+  box-shadow: 0 5px 0 var(--ink);
+}
+
+.btn-glyph {
+  width: clamp(10px, 2.6vmin, 16px);
+  height: clamp(10px, 2.6vmin, 16px);
+  flex: none;
+}
+
+.pixel-btn--small {
+  font-size: clamp(9px, 2.2vmin, 13px);
+  padding: clamp(7px, 1.6vmin, 11px) clamp(14px, 3.4vmin, 24px);
+  box-shadow: 0 3px 0 var(--ink);
+}
+
+.pixel-btn--small:active {
+  transform: translateY(3px);
 }
 
 /* Portal transition ("next biome" loading screen): a dark low-opacity
@@ -490,6 +605,14 @@ html, body {
   height: 14px;
   stroke: currentColor;
   flex: none;
+}
+
+/* Menu only: scale the existing coin mark with the balance next to it, so
+   the counter reads as one unit instead of a tiny mark beside big digits.
+   The wardrobe's copy keeps its fixed size. */
+#menu-coins .icon {
+  width: clamp(13px, 2.8vmin, 19px);
+  height: clamp(13px, 2.8vmin, 19px);
 }
 
 .overlay--wardrobe {

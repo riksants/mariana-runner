@@ -55,6 +55,13 @@ const SPRITE_PATHS = {
   vulcaoObstacleRockSmall: 'assets/sprites/biome_obstacle_vulcao_rockSmall.png',
   vulcaoDecor1: 'assets/sprites/biome_decor_vulcao_1.png',
   vulcaoDecor2: 'assets/sprites/biome_decor_vulcao_2.png',
+
+  // Checkpoint portals, named after the biome they appear IN — the scene
+  // framed inside each arch previews the biome it leads to.
+  portalDesert: 'assets/sprites/portal_desert.png',
+  portalSelva: 'assets/sprites/portal_selva.png',
+  portalNeve: 'assets/sprites/portal_neve.png',
+  portalVulcao: 'assets/sprites/portal_vulcao.png',
 };
 
 (function buildFrameManifest() {
