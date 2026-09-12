@@ -21,8 +21,11 @@
 // away instead of waiting on HTTP cache to expire — iOS ignores this
 // (see index.html note) and still needs a manual remove/re-add. v7,
 // 2026-09-11: re-cropped the icon art to remove a baked-in black
-// border/margin around the logo; bumped to ?v=3.)
-const CACHE_NAME = 'mariana-runner-v7';
+// border/margin around the logo; bumped to ?v=3. v8, 2026-09-12: biome
+// system rebuilt from scratch (new selva/neve/vulcao art + obstacles at
+// the same filenames as the old ones) — bumped so a browser that already
+// cached the old biome images under those URLs fetches the new ones.)
+const CACHE_NAME = 'mariana-runner-v8';
 const APP_SHELL = [
   './',
   './index.html',

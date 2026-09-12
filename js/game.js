@@ -419,10 +419,10 @@
 
   function initBackground() {
     clouds = [
-      { img: 'cloudBig', x: 80, y: 40, scale: 0.55 },
-      { img: 'cloudSmall1', x: 340, y: 70, scale: 0.55 },
-      { img: 'cloudBig', x: 560, y: 30, scale: 0.4 },
-      { img: 'cloudSmall1', x: 700, y: 90, scale: 0.65 },
+      { role: 'cloud', x: 80, y: 40, scale: 0.55 },
+      { role: 'cloud2', x: 340, y: 70, scale: 0.55 },
+      { role: 'cloud', x: 560, y: 30, scale: 0.4 },
+      { role: 'cloud2', x: 700, y: 90, scale: 0.65 },
     ];
     mountainScrollX = 0;
     groundScrollX = 0;
@@ -435,58 +435,78 @@
     return Math.min(MAX_SPEED, BASE_SPEED + score * SPEED_PER_POINT);
   }
 
-  // Biome swap: purely score-driven (like unlockedTypes below), so a new
-  // run always starts back in the desert without any extra reset code.
-  // Cycles endlessly through the list, BIOME_SCORE_STEP points per stage.
-  const BIOME_SCORE_STEP = 4000;
+  // Biome swap: purely score-driven, so a new run always starts back in
+  // the desert without any extra reset code. Cycles endlessly through the
+  // list, BIOME_SCORE_STEP points per stage (0-4999 desert, 5000-9999
+  // selva, 10000-14999 neve, 15000-19999 vulcao, then repeats).
+  const BIOME_SCORE_STEP = 5000;
   const BIOME_ORDER = ['desert', 'selva', 'neve', 'vulcao'];
-  // The last BIOME_TRANSITION_WINDOW points of every stage crossfade into
-  // the next biome instead of cutting over instantly.
-  const BIOME_TRANSITION_WINDOW = 500;
-  // { from, to, t } — t is 0 for almost all of a stage, then eases from 0
-  // to 1 across the transition window right before the next boundary.
-  // `from`/`to` are always adjacent biomes in BIOME_ORDER (cyclic), so at
-  // t=0 rendering/spawning only `from` is indistinguishable from the old
-  // hard-cutover behavior.
-  function biomeInfoForScore(s) {
-    const idx = Math.floor(s / BIOME_SCORE_STEP);
-    const from = BIOME_ORDER[idx % BIOME_ORDER.length];
-    const to = BIOME_ORDER[(idx + 1) % BIOME_ORDER.length];
-    const nextBoundary = (idx + 1) * BIOME_SCORE_STEP;
-    const windowStart = nextBoundary - BIOME_TRANSITION_WINDOW;
-    const t = s >= windowStart ? Math.min(1, (s - windowStart) / BIOME_TRANSITION_WINDOW) : 0;
-    return { from, to, t };
+  function activeBiome() {
+    return BIOME_ORDER[Math.floor(score / BIOME_SCORE_STEP) % BIOME_ORDER.length];
   }
 
-  // Static backdrop art for each non-desert biome (the source art is one
-  // illustrated scene per biome, not a tileable strip like mountains.png,
-  // so it doesn't scroll — see drawBackground).
-  const BIOME_BACKDROPS = {
-    selva: { sprite: 'selvaBg', sky: '#42646b', ground: 'selvaGround' },
-    neve: { sprite: 'neveBg', sky: '#406eb0', ground: 'neveGround' },
-    vulcao: { sprite: 'vulcaoBg', sky: '#3f3c56', ground: 'vulcaoGround' },
+  // The region change plays out as a hard physical boundary sweeping
+  // across the screen over BIOME_TRANSITION_DURATION seconds — the old
+  // biome stays fully rendered to the right of the boundary (behind
+  // Mariana as she "runs into" new territory) while the new biome fills
+  // in from the right edge leftward. No alpha/opacity anywhere in this:
+  // it's a hard clip, deliberately not a fade (see drawBackground).
+  // biomeTransition/lastBiomeIndex are mutable run state, reset in
+  // startGame() alongside every other run-state variable.
+  const BIOME_TRANSITION_DURATION = 10;
+  let lastBiomeIndex = 0;
+  let biomeTransition = { active: false, from: 'desert', to: 'desert', t: 0 };
+  function updateBiomeTransition(dt) {
+    const idx = Math.floor(score / BIOME_SCORE_STEP);
+    if (idx !== lastBiomeIndex) {
+      biomeTransition = {
+        active: true,
+        from: BIOME_ORDER[lastBiomeIndex % BIOME_ORDER.length],
+        to: BIOME_ORDER[idx % BIOME_ORDER.length],
+        t: 0,
+      };
+      lastBiomeIndex = idx;
+    }
+    if (biomeTransition.active) {
+      biomeTransition.t += dt;
+      if (biomeTransition.t >= BIOME_TRANSITION_DURATION) biomeTransition.active = false;
+    }
+  }
+  // { boundaryX, from, to } while a transition is playing, else null. The
+  // boundary starts at the right edge (nothing of the new biome visible
+  // yet) and sweeps to x=0 over the transition duration.
+  function activeTransitionFrame() {
+    if (!biomeTransition.active) return null;
+    const frac = Math.min(1, biomeTransition.t / BIOME_TRANSITION_DURATION);
+    return { boundaryX: W * (1 - frac), from: biomeTransition.from, to: biomeTransition.to };
+  }
+
+  // Scenery art per biome. Desert keeps its original tiling-silhouette
+  // treatment (mountains.png scrolling + flat fill) exactly as before —
+  // every other biome uses one static illustrated backdrop + its own
+  // ground tile, cloud and obstacle set. "sprite"/"ground"/"cloud" absent
+  // on desert signals drawBiomeSkyAndBackdrop/drawBiomeGround/cloud
+  // lookup to fall back to the original desert-specific code path.
+  const BIOME_ART = {
+    desert: { cloud: 'cloudBig', cloud2: 'cloudSmall1' },
+    selva: { sprite: 'selvaBg', sky: '#eff4f1', ground: 'selvaGround', cloud: 'selvaCloud' },
+    neve: { sprite: 'neveBg', sky: '#f4f6fa', ground: 'neveGround', cloud: 'neveCloud' },
+    vulcao: { sprite: 'vulcaoBg', sky: '#dcd0cf', ground: 'vulcaoGround', cloud: 'vulcaoCloud' },
   };
 
   // Ground-obstacle sprites are per biome — desert's cactus/rock set must
   // never appear once a biome swap has happened, and vice versa. Each
   // biome keeps the same 4 roles (unlockedTypes/CACTUS_*_H/ROCK_*_H below
   // are untouched) so difficulty and hitboxes stay identical; only the
-  // artwork per role changes.
+  // artwork per role changes. A newly spawned obstacle always uses
+  // activeBiome() — a hard cutover the instant score crosses a threshold
+  // — while anything already on screen keeps the sprite it spawned with.
   const BIOME_OBSTACLE_SPRITES = {
     desert: { cactusSmall: 'cactusSmall', cactusBig: 'cactusBig', rock: 'rock', rockSmall: 'rockSmall' },
     selva: { cactusSmall: 'selvaObstacleSmall', cactusBig: 'selvaObstacleBig', rock: 'selvaObstacleRock', rockSmall: 'selvaObstacleRockSmall' },
     neve: { cactusSmall: 'neveObstacleSmall', cactusBig: 'neveObstacleBig', rock: 'neveObstacleRock', rockSmall: 'neveObstacleRockSmall' },
     vulcao: { cactusSmall: 'vulcaoObstacleSmall', cactusBig: 'vulcaoObstacleBig', rock: 'vulcaoObstacleRock', rockSmall: 'vulcaoObstacleRockSmall' },
   };
-  // Chooses which biome's obstacle art a *newly spawned* group uses.
-  // During a transition window this probabilistically mixes old/new-biome
-  // obstacles, shifting from 100% old to 100% new as t goes 0→1 — already
-  // on-screen obstacles keep whatever they spawned with (see spawnBiome
-  // stored per obstacle) so nothing changes appearance mid-flight.
-  function pickSpawnBiome() {
-    const { from, to, t } = biomeInfoForScore(score);
-    return Math.random() < t ? to : from;
-  }
 
   function reactionTimeFloor() {
     const t = 1.05 - score * 0.0009;
@@ -538,7 +558,7 @@
   function spawnObstacleGroup() {
     const speed = currentSpeed();
     const types = unlockedTypes();
-    const spawnBiome = pickSpawnBiome();
+    const spawnBiome = activeBiome();
     const startX = W + 10;
     let groupEndX = startX;
 
@@ -924,6 +944,8 @@
     milestoneFloor = 0;
     lastMilestoneTime = -Infinity;
     elapsed = 0;
+    lastBiomeIndex = 0;
+    biomeTransition = { active: false, from: 'desert', to: 'desert', t: 0 };
     obstacles = [];
     decor = [];
     powerups = [];
@@ -1127,6 +1149,7 @@
     elapsed += dt;
     const speed = currentSpeed();
     score += dt * (speed / 6.5) * scoreMultiplier;
+    updateBiomeTransition(dt);
 
     const flooredScore = Math.floor(score);
     if (flooredScore >= milestoneFloor + 100) {
@@ -1419,18 +1442,13 @@
     }
   }
 
-  // Sky + backdrop (mountains or the static biome scene) for one biome,
-  // drawn at the given opacity. Used twice per frame during a transition
-  // window (outgoing biome at alpha 1, incoming biome layered on top at
-  // alpha t) so the swap dissolves gradually instead of cutting instantly.
-  function drawBiomeSkyAndBackdrop(biomeName, alpha, gY) {
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    const backdrop = BIOME_BACKDROPS[biomeName];
-    if (backdrop) {
-      ctx.fillStyle = backdrop.sky;
+  // Sky + backdrop (mountains or the static biome scene) for one biome.
+  function drawBiomeSkyAndBackdrop(biomeName, gY) {
+    const art = BIOME_ART[biomeName];
+    if (art.sprite) {
+      ctx.fillStyle = art.sky;
       ctx.fillRect(0, 0, W, H);
-      const bgImg = SPRITES[backdrop.sprite];
+      const bgImg = SPRITES[art.sprite];
       const bgH = Math.min(200, gY * 0.78);
       const bgW = spriteWidthForHeight(bgImg, bgH);
       ctx.drawImage(bgImg, (W - bgW) / 2, gY - bgH, bgW, bgH);
@@ -1448,18 +1466,14 @@
         mx += mW;
       }
     }
-    ctx.restore();
   }
 
-  // Ground tile for one biome, drawn at the given opacity — same
-  // crossfade pairing as drawBiomeSkyAndBackdrop above.
-  function drawBiomeGround(biomeName, alpha, gY) {
-    const backdrop = BIOME_BACKDROPS[biomeName];
-    const gImg = backdrop ? SPRITES[backdrop.ground] : SPRITES.groundTile;
+  // Ground tile for one biome.
+  function drawBiomeGround(biomeName, gY) {
+    const art = BIOME_ART[biomeName];
+    const gImg = art.ground ? SPRITES[art.ground] : SPRITES.groundTile;
     const gW = spriteWidthForHeight(gImg, GROUND_TILE_H);
     let gx = (groundScrollX % gW) - gW;
-    ctx.save();
-    ctx.globalAlpha = alpha;
     while (gx < W) {
       ctx.drawImage(gImg, gx, gY, gW, GROUND_TILE_H);
       gx += gW;
@@ -1471,30 +1485,75 @@
     // or its scroll speed. Same technique as the day/night tint, just very
     // faint and constant regardless of time of day. Desert-specific — the
     // other biomes' ground crops don't share that pattern.
-    if (!backdrop) {
-      ctx.globalAlpha = alpha * 0.16;
+    if (!art.ground) {
+      ctx.save();
+      ctx.globalAlpha = 0.16;
       ctx.fillStyle = '#f3ead9';
       ctx.fillRect(0, gY, W, GROUND_TILE_H);
+      ctx.restore();
     }
+  }
+
+  // Which biome a cloud at world-relative x should render as: on the far
+  // (old-biome) side of a sweeping boundary it keeps the outgoing biome's
+  // look, past the boundary it's already in the new region.
+  function biomeForX(x, trans) {
+    if (!trans) return activeBiome();
+    return x < trans.boundaryX ? trans.from : trans.to;
+  }
+
+  function drawClouds(trans) {
+    for (const c of clouds) {
+      const art = BIOME_ART[biomeForX(c.x, trans)];
+      const img = SPRITES[art[c.role] || art.cloud];
+      const h = 70 * c.scale;
+      const w = spriteWidthForHeight(img, h);
+      ctx.drawImage(img, c.x, c.y, w, h);
+    }
+  }
+
+  // A soft vertical shadow marking the physical seam between two biomes
+  // while a transition is sweeping across the screen — a real dividing
+  // line, not a fade, matching the "new region entered, old one left
+  // behind" feel instead of looking like a screen edit.
+  function drawBiomeSeam(boundaryX) {
+    const seamW = 16;
+    const grad = ctx.createLinearGradient(boundaryX - seamW / 2, 0, boundaryX + seamW / 2, 0);
+    grad.addColorStop(0, 'rgba(20,16,10,0)');
+    grad.addColorStop(0.5, 'rgba(20,16,10,0.25)');
+    grad.addColorStop(1, 'rgba(20,16,10,0)');
+    ctx.save();
+    ctx.fillStyle = grad;
+    ctx.fillRect(boundaryX - seamW / 2, 0, seamW, H);
     ctx.restore();
   }
 
   function drawBackground() {
     const gY = H - GROUND_TILE_H;
-    const { from, to, t } = biomeInfoForScore(score);
+    const trans = activeTransitionFrame();
 
-    drawBiomeSkyAndBackdrop(from, 1, gY);
-    if (t > 0) drawBiomeSkyAndBackdrop(to, t, gY);
-
-    for (const c of clouds) {
-      const img = SPRITES[c.img];
-      const h = 70 * c.scale;
-      const w = spriteWidthForHeight(img, h);
-      ctx.drawImage(img, c.x, c.y, w, h);
+    drawBiomeSkyAndBackdrop(trans ? trans.to : activeBiome(), gY);
+    if (trans) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, 0, trans.boundaryX, H);
+      ctx.clip();
+      drawBiomeSkyAndBackdrop(trans.from, gY);
+      ctx.restore();
     }
 
-    drawBiomeGround(from, 1, gY);
-    if (t > 0) drawBiomeGround(to, t, gY);
+    drawClouds(trans);
+
+    drawBiomeGround(trans ? trans.to : activeBiome(), gY);
+    if (trans) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, 0, trans.boundaryX, H);
+      ctx.clip();
+      drawBiomeGround(trans.from, gY);
+      ctx.restore();
+      drawBiomeSeam(trans.boundaryX);
+    }
   }
 
   function drawDecor() {

@@ -24,23 +24,24 @@ const SPRITE_PATHS = {
   mountains: 'assets/sprites/mountains.png',
 
   selvaBg: 'assets/sprites/biome_selva_bg.png',
-  neveBg: 'assets/sprites/biome_neve_bg.png',
-  vulcaoBg: 'assets/sprites/biome_vulcao_bg.png',
-
   selvaGround: 'assets/sprites/biome_selva_ground.png',
-  neveGround: 'assets/sprites/biome_neve_ground.png',
-  vulcaoGround: 'assets/sprites/biome_vulcao_ground.png',
-
+  selvaCloud: 'assets/sprites/biome_selva_cloud.png',
   selvaObstacleSmall: 'assets/sprites/biome_obstacle_selva_small.png',
   selvaObstacleBig: 'assets/sprites/biome_obstacle_selva_big.png',
   selvaObstacleRock: 'assets/sprites/biome_obstacle_selva_rock.png',
   selvaObstacleRockSmall: 'assets/sprites/biome_obstacle_selva_rockSmall.png',
 
+  neveBg: 'assets/sprites/biome_neve_bg.png',
+  neveGround: 'assets/sprites/biome_neve_ground.png',
+  neveCloud: 'assets/sprites/biome_neve_cloud.png',
   neveObstacleSmall: 'assets/sprites/biome_obstacle_neve_small.png',
   neveObstacleBig: 'assets/sprites/biome_obstacle_neve_big.png',
   neveObstacleRock: 'assets/sprites/biome_obstacle_neve_rock.png',
   neveObstacleRockSmall: 'assets/sprites/biome_obstacle_neve_rockSmall.png',
 
+  vulcaoBg: 'assets/sprites/biome_vulcao_bg.png',
+  vulcaoGround: 'assets/sprites/biome_vulcao_ground.png',
+  vulcaoCloud: 'assets/sprites/biome_vulcao_cloud.png',
   vulcaoObstacleSmall: 'assets/sprites/biome_obstacle_vulcao_small.png',
   vulcaoObstacleBig: 'assets/sprites/biome_obstacle_vulcao_big.png',
   vulcaoObstacleRock: 'assets/sprites/biome_obstacle_vulcao_rock.png',
