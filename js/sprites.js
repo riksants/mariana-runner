@@ -57,11 +57,14 @@ const SPRITE_PATHS = {
   vulcaoDecor2: 'assets/sprites/biome_decor_vulcao_2.png',
 
   // Checkpoint portals, named after the biome they appear IN — the scene
-  // framed inside each arch previews the biome it leads to.
-  portalDesert: 'assets/sprites/portal_desert.png',
-  portalSelva: 'assets/sprites/portal_selva.png',
-  portalNeve: 'assets/sprites/portal_neve.png',
-  portalVulcao: 'assets/sprites/portal_vulcao.png',
+  // framed inside each arch previews the biome it leads to. WebP rather
+  // than PNG: these four illustrations are by far the heaviest thing the
+  // game loads, and WebP carries them at a quarter of the bytes with the
+  // alpha channel preserved exactly.
+  portalDesert: 'assets/sprites/portal_desert.webp',
+  portalSelva: 'assets/sprites/portal_selva.webp',
+  portalNeve: 'assets/sprites/portal_neve.webp',
+  portalVulcao: 'assets/sprites/portal_vulcao.webp',
 };
 
 (function buildFrameManifest() {

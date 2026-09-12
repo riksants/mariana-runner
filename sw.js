@@ -38,8 +38,13 @@
 // gained #overlay-transition. v12, 2026-09-12: illustrated portal art
 // replaces the canvas-drawn placeholder, and selva/neve/vulcao were
 // rebuilt from new reference sheets — every biome_* filename is reused,
-// so an installed copy would otherwise keep serving the old art.)
-const CACHE_NAME = 'mariana-runner-v12';
+// so an installed copy would otherwise keep serving the old art. v13,
+// 2026-09-12: portal sheets downscaled to 900px tall — the largest size
+// the game ever draws them, so nothing upscales — and re-encoded as
+// WebP, taking the boot payload from ~8.2MB to ~3.6MB. The .png copies
+// are gone, so an installed client holding them must fetch the new
+// .webp URLs.)
+const CACHE_NAME = 'mariana-runner-v13';
 const APP_SHELL = [
   './',
   './index.html',
