@@ -27,8 +27,10 @@
 // cached the old biome images under those URLs fetches the new ones. v9,
 // 2026-09-12: fixed opaque-white backgrounds on biome obstacles/clouds
 // (real transparency) and full-width biome backdrops (no more visible
-// box seam) — same filenames again, bumped again.)
-const CACHE_NAME = 'mariana-runner-v9';
+// box seam) — same filenames again, bumped again. v10, 2026-09-12:
+// re-cropped biome_vulcao_bg.png to exclude a leftover dark corner
+// fragment from the reference sheet border.)
+const CACHE_NAME = 'mariana-runner-v10';
 const APP_SHELL = [
   './',
   './index.html',
