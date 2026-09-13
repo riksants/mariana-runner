@@ -161,7 +161,14 @@
       </div>
 
       <div id="overlay-ranking" class="overlay overlay--ranking" hidden>
-        <h2 class="title title--small">RANKING GLOBAL</h2>
+        <div class="rank-head">
+          <svg class="rank-crown" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6l5 4 4-6 4 6 5-4-1.6 9H4.6L3 6zm1.6 11h14.8v3H4.6z"/></svg>
+          <h2 class="title title--rank">RANKING GLOBAL</h2>
+          <div class="title-rule" aria-hidden="true">
+            <svg class="title-rule-heart" viewBox="0 0 24 24"><path d="M12 20.5S3.8 15.4 3.8 9.9c0-2.6 2-4.4 4.3-4.4 1.7 0 3.1 1 3.9 2.3.8-1.3 2.2-2.3 3.9-2.3 2.3 0 4.3 1.8 4.3 4.4 0 5.5-8.2 10.6-8.2 10.6z" fill="currentColor"/></svg>
+          </div>
+        </div>
+        <div class="rank-podio" id="ranking-podio"></div>
         <ul class="rank-list" id="ranking-list"></ul>
         <p class="rank-msg" id="ranking-msg" role="status" aria-live="polite" hidden></p>
         <div class="rank-me" id="ranking-me" hidden></div>

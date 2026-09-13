@@ -19,13 +19,15 @@
   const openBtn = document.getElementById('btn-ranking');
   const backBtn = document.getElementById('btn-ranking-back');
   const listEl = document.getElementById('ranking-list');
+  const podioEl = document.getElementById('ranking-podio');
   const msgEl = document.getElementById('ranking-msg');
   const meEl = document.getElementById('ranking-me');
+  const frame = document.getElementById('game-frame');
 
   if (!overlay || !openBtn || typeof CloudSave === 'undefined') return;
 
   const TOP = 10;
-  const MEDALHAS = ['🥇', '🥈', '🥉'];
+  const PODIO = 3;   // quantos sobem no pódio; do quarto em diante vira lista
   let carregando = false;
 
   const formatar = (n) => Number(n || 0).toLocaleString('pt-BR');
@@ -42,9 +44,8 @@
     li.className = 'rank-row' + (ehVoce ? ' rank-row--me' : '');
 
     const pos = document.createElement('span');
-    const medalha = MEDALHAS[item.posicao - 1];
-    pos.className = 'rank-pos' + (medalha ? ' rank-pos--medal' : '');
-    pos.textContent = medalha || item.posicao + '.';
+    pos.className = 'rank-pos';
+    pos.textContent = item.posicao;
 
     const nick = document.createElement('span');
     nick.className = 'rank-nick';
@@ -58,8 +59,53 @@
     return li;
   }
 
+  const CROA = 'M3 6l5 4 4-6 4 6 5-4-1.6 9H4.6L3 6zm1.6 11h14.8v3H4.6z';
+
+  // Um degrau do pódio. A altura vem da classe, não de cálculo: primeiro
+  // mais alto, depois segundo, depois terceiro.
+  function degrau(item, ehVoce) {
+    const div = document.createElement('div');
+    div.className = `podio-lugar podio-lugar--${item.posicao}` + (ehVoce ? ' podio-lugar--me' : '');
+
+    const coroa = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    coroa.setAttribute('viewBox', '0 0 24 24');
+    coroa.setAttribute('aria-hidden', 'true');
+    coroa.setAttribute('class', 'podio-coroa');
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', CROA);
+    coroa.appendChild(path);
+
+    const nick = document.createElement('span');
+    nick.className = 'podio-nick';
+    nick.textContent = item.nick;
+
+    const score = document.createElement('span');
+    score.className = 'podio-score';
+    score.textContent = formatar(item.high_score);
+
+    const bloco = document.createElement('div');
+    bloco.className = 'podio-bloco';
+    const num = document.createElement('span');
+    num.className = 'podio-num';
+    num.textContent = item.posicao;
+    bloco.appendChild(num);
+
+    div.append(coroa, nick, score, bloco);
+    return div;
+  }
+
+  // Ordem VISUAL do pódio: segundo à esquerda, primeiro no meio, terceiro
+  // à direita. Com menos de três jogadores os buracos somem e o que
+  // sobra continua centralizado.
+  function montarPodio(tres, euPos) {
+    [tres[1], tres[0], tres[2]]
+      .filter(Boolean)
+      .forEach((item) => podioEl.appendChild(degrau(item, item.posicao === euPos)));
+  }
+
   function limpar() {
     while (listEl.firstChild) listEl.removeChild(listEl.firstChild);
+    while (podioEl.firstChild) podioEl.removeChild(podioEl.firstChild);
     meEl.hidden = true;
     while (meEl.firstChild) meEl.removeChild(meEl.firstChild);
   }
@@ -111,7 +157,9 @@
     }
 
     const noTopo = eu && eu.posicao <= TOP;
-    topo.forEach((item) => listEl.appendChild(linha(item, !!(eu && item.posicao === eu.posicao && noTopo))));
+    const euPos = noTopo ? eu.posicao : -1;
+    montarPodio(topo.slice(0, PODIO), euPos);
+    topo.slice(PODIO).forEach((item) => listEl.appendChild(linha(item, item.posicao === euPos)));
 
     if (eu && !noTopo) renderMinhaPosicao(eu);
     if (!logado) mensagem('Entre na sua conta para aparecer no ranking.');
@@ -121,13 +169,20 @@
     carregando = false;
   }
 
+  // A marca no frame esconde o menu inicial enquanto o painel está
+  // aberto. É só visibilidade: o menu volta intacto ao fechar, e assim o
+  // Deserto que o próprio jogo já desenha no canvas (nuvens, montanhas,
+  // chão, Mariana e o gato) aparece atrás do ranking, sem nenhum cenário
+  // novo e sem nenhuma linha em game.js.
   function abrir() {
+    if (frame) frame.classList.add('is-ranking-open');
     overlay.hidden = false;
     carregar();
   }
 
   function fechar() {
     overlay.hidden = true;
+    if (frame) frame.classList.remove('is-ranking-open');
   }
 
   // A tela inicial inteira é "toque para jogar" (game.js liga um clique na

@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   --ink: #2b2b2b;
   --paper: #f3ead9;
   --paper-dim: #ece3d2;
@@ -837,10 +837,9 @@ html, body {
 }
 
 /* ---------- Ranking global ----------
-   Mesmo vocabulário do resto do menu: papel, tinta, moldura de 2px.
-   As linhas não são cartões — dez cartões empilhados pesariam a tela;
-   um filete separando cada uma basta, e ainda sobra contraste para
-   destacar a linha de quem está jogando. */
+   Mesmo vocabulário do resto do jogo: papel, tinta, moldura de 2px,
+   fonte de display. Os únicos tons novos são ouro/prata/bronze do pódio,
+   e mesmo esses são pastéis para não brigar com o Deserto atrás. */
 #menu-buttons {
   display: flex;
   flex-wrap: wrap;
@@ -848,34 +847,161 @@ html, body {
   gap: clamp(6px, 1.6vmin, 12px);
 }
 
+/* O painel não pinta fundo próprio: quem aparece atrás é o Deserto que o
+   jogo já desenha no canvas — nuvens, montanhas, chão, Mariana e o gato.
+   Nenhum cenário novo, nenhum asset novo. */
 .overlay--ranking {
   z-index: 3;
-  background: var(--paper);
-  gap: clamp(6px, 1.6vmin, 12px);
+  background: transparent;
+  justify-content: center;
+  gap: clamp(5px, 1.2vmin, 10px);
+  padding: clamp(8px, 2vmin, 16px);
 }
 
+/* Enquanto o ranking está aberto o menu inicial some por visibilidade —
+   volta intacto ao fechar, e de quebra não recebe cliques por baixo. */
+#game-frame.is-ranking-open #overlay-start {
+  visibility: hidden;
+}
+
+.rank-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: none;
+}
+
+.rank-crown {
+  width: clamp(16px, 4vmin, 28px);
+  height: clamp(16px, 4vmin, 28px);
+  fill: #d9a441;
+  stroke: var(--ink);
+  stroke-width: 1.1;
+  stroke-linejoin: round;
+  margin-bottom: clamp(-2px, -0.4vmin, -1px);
+}
+
+.title--rank {
+  font-size: clamp(15px, 4.6vmin, 30px);
+  letter-spacing: clamp(1px, 0.4vmin, 3px);
+  /* Mesma sombra do título da tela inicial: é o que mantém o texto
+     legível por cima do Deserto sem precisar de uma folha de papel. */
+  text-shadow: 0 3px 0 var(--paper-dim);
+}
+
+/* ---------- Pódio ----------
+   Ordem visual 2-1-3 vem do JS; aqui só as alturas e as cores. Os itens
+   alinham pela base, então o degrau mais alto empurra o nick para cima
+   sozinho, sem posicionamento absoluto. */
+.rank-podio {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: clamp(4px, 1.2vmin, 10px);
+  flex: none;
+}
+
+.rank-podio:empty {
+  display: none;
+}
+
+.podio-lugar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: clamp(72px, 17vmin, 118px);
+  text-align: center;
+  line-height: 1.2;
+}
+
+.podio-coroa {
+  width: clamp(12px, 3vmin, 20px);
+  height: clamp(12px, 3vmin, 20px);
+  stroke: var(--ink);
+  stroke-width: 1.1;
+  stroke-linejoin: round;
+}
+
+.podio-nick {
+  font-family: var(--font-display);
+  font-size: clamp(7px, 1.7vmin, 11px);
+  color: var(--ink);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: 0 2px 0 var(--paper-dim);
+}
+
+.podio-score {
+  font-family: var(--font-display);
+  font-size: clamp(8px, 2vmin, 13px);
+  color: var(--ink);
+  margin-top: clamp(1px, 0.4vmin, 3px);
+  text-shadow: 0 2px 0 var(--paper-dim);
+}
+
+/* Bloco fechado, topo arredondado e base reta: assim ele lê como um
+   degrau APOIADO no cartão da lista logo abaixo, em vez de parecer
+   cortado por ele. */
+.podio-bloco {
+  width: 100%;
+  margin-top: clamp(3px, 0.8vmin, 6px);
+  border: 2px solid var(--ink);
+  border-radius: 4px 4px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.podio-num {
+  font-family: var(--font-display);
+  font-size: clamp(11px, 2.8vmin, 18px);
+  color: var(--ink);
+}
+
+/* Alturas e metais. O primeiro é o mais alto; o terceiro, o mais baixo. */
+.podio-lugar--1 .podio-bloco { height: clamp(36px, 9vmin, 62px); background: #e7c46a; }
+.podio-lugar--1 .podio-coroa { fill: #d9a441; }
+.podio-lugar--2 .podio-bloco { height: clamp(26px, 6.6vmin, 46px); background: #ccd0d6; }
+.podio-lugar--2 .podio-coroa { fill: #aab0b8; }
+.podio-lugar--3 .podio-bloco { height: clamp(20px, 5.2vmin, 36px); background: #d3a084; }
+.podio-lugar--3 .podio-coroa { fill: #b87a58; }
+
+/* "esse sou eu" no pódio: moldura mais grossa, sem cor nova. */
+.podio-lugar--me .podio-bloco {
+  border-width: 4px;
+  box-shadow: inset 0 3px 0 rgba(43, 43, 43, 0.18);
+}
+
+/* ---------- Lista do 4º em diante ---------- */
 .rank-list {
   list-style: none;
   margin: 0;
-  padding: 0;
-  width: min(420px, 92vw);
-  /* Encolhe e rola em vez de empurrar o botão VOLTAR para fora da tela
-     — o celular deitado tem pouca altura. */
+  padding: clamp(3px, 0.8vmin, 6px) clamp(4px, 1vmin, 8px);
+  width: min(440px, 94%);
+  background: rgba(243, 234, 217, 0.92);
+  border: 2px solid var(--ink);
+  border-radius: 4px;
+  /* Encolhe e rola em vez de empurrar o VOLTAR para fora da tela. */
   flex: 0 1 auto;
   min-height: 0;
   overflow-y: auto;
 }
 
+.rank-list:empty {
+  display: none;
+}
+
 .rank-row {
   display: grid;
-  /* 3em cabe "10." e "27." sem encostar no nick. */
-  grid-template-columns: 3em 1fr auto;
+  grid-template-columns: 2.4em 1fr auto;
   align-items: center;
   gap: clamp(6px, 1.6vmin, 12px);
-  padding: clamp(4px, 1vmin, 7px) clamp(6px, 1.4vmin, 10px);
-  border-bottom: 1px solid rgba(43, 43, 43, 0.16);
+  padding: clamp(3px, 0.8vmin, 6px) clamp(5px, 1.2vmin, 9px);
+  border-bottom: 1px solid rgba(43, 43, 43, 0.14);
   font-family: var(--font-display);
-  font-size: clamp(8px, 1.9vmin, 11px);
+  font-size: clamp(7px, 1.8vmin, 11px);
   /* #game-frame zera line-height para o próprio layout; sem restaurar
      aqui o texto fica numa linha de altura zero. */
   line-height: 1.15;
@@ -890,12 +1016,6 @@ html, body {
   color: var(--muted);
 }
 
-.rank-pos--medal {
-  font-family: var(--font-body);
-  font-size: 1.9em;
-  line-height: 1;
-}
-
 .rank-nick {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -907,40 +1027,51 @@ html, body {
   color: var(--ink);
 }
 
-/* Destaque da própria conta: preenchimento e moldura, sem cor nova. O
-   suficiente para achar a linha de relance, longe de chamativo. Usa
-   box-shadow em vez de border para não mexer na altura da linha. */
+/* Destaque da própria conta na lista: preenchimento e moldura, sem cor
+   nova. Usa box-shadow em vez de border para não mexer na altura. */
 .rank-row--me {
   background: var(--paper-dim);
   box-shadow: inset 0 0 0 2px var(--ink);
-  border-radius: 4px;
+  border-radius: 3px;
 }
 
 .rank-me {
-  width: min(420px, 92vw);
+  width: min(440px, 94%);
   flex: none;
-  border-top: 2px dashed rgba(43, 43, 43, 0.28);
-  padding-top: clamp(8px, 1.8vmin, 13px);
+  padding: clamp(3px, 0.8vmin, 6px) clamp(4px, 1vmin, 8px);
+  background: rgba(243, 234, 217, 0.92);
+  border: 2px dashed var(--ink);
+  border-radius: 4px;
 }
 
 .rank-me-label {
   display: block;
   font-family: var(--font-display);
-  font-size: clamp(7px, 1.5vmin, 9px);
+  font-size: clamp(6px, 1.4vmin, 9px);
   letter-spacing: 1px;
   color: var(--muted);
   text-align: left;
   /* Sem isto o line-height:0 do #game-frame corta o cedilha de POSIÇÃO. */
   line-height: 1.4;
-  padding: 0 clamp(6px, 1.4vmin, 10px) clamp(3px, 0.8vmin, 5px);
+  padding: 0 clamp(5px, 1.2vmin, 9px) clamp(2px, 0.6vmin, 4px);
+}
+
+.rank-me .rank-list {
+  width: 100%;
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0;
 }
 
 .rank-msg {
   margin: 0;
   flex: none;
   font-family: var(--font-body);
-  font-size: clamp(13px, 3vmin, 17px);
+  font-size: clamp(12px, 2.8vmin, 17px);
   line-height: 1.2;
   color: var(--muted);
-  max-width: min(420px, 92vw);
+  max-width: min(440px, 94%);
+  text-shadow: 0 2px 0 var(--paper-dim);
 }
+
