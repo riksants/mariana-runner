@@ -59,21 +59,37 @@
     return li;
   }
 
+  const SVG_NS = 'http://www.w3.org/2000/svg';
   const CROA = 'M3 6l5 4 4-6 4 6 5-4-1.6 9H4.6L3 6zm1.6 11h14.8v3H4.6z';
+  // Ramo de louro: um talo curvo com quatro folhas. Desenhado uma vez e
+  // espelhado por CSS para virar o par que ladeia o número.
+  const LOURO = [
+    ['path', { d: 'M17 22.5C9.5 20 5.6 13.8 7.1 4.5', fill: 'none', 'stroke-width': '2.2', 'stroke-linecap': 'round' }],
+    ['ellipse', { cx: 7.1, cy: 7.6, rx: 3.4, ry: 1.9, transform: 'rotate(-44 7.1 7.6)' }],
+    ['ellipse', { cx: 8.3, cy: 12.1, rx: 3.6, ry: 2, transform: 'rotate(-26 8.3 12.1)' }],
+    ['ellipse', { cx: 10.8, cy: 16.3, rx: 3.7, ry: 2, transform: 'rotate(-8 10.8 16.3)' }],
+    ['ellipse', { cx: 14.5, cy: 19.8, rx: 3.5, ry: 2, transform: 'rotate(13 14.5 19.8)' }],
+  ];
 
-  // Um degrau do pódio. A altura vem da classe, não de cálculo: primeiro
-  // mais alto, depois segundo, depois terceiro.
+  function svg(classe, filhos) {
+    const el = document.createElementNS(SVG_NS, 'svg');
+    el.setAttribute('viewBox', '0 0 24 24');
+    el.setAttribute('aria-hidden', 'true');
+    el.setAttribute('class', classe);
+    filhos.forEach(([tag, attrs]) => {
+      const f = document.createElementNS(SVG_NS, tag);
+      Object.entries(attrs).forEach(([k, v]) => f.setAttribute(k, v));
+      el.appendChild(f);
+    });
+    return el;
+  }
+
+  // Um degrau do pódio: coroa, nick e pontuação por cima; o bloco com
+  // face superior mais clara e o número entre dois ramos de louro.
+  // A altura vem da classe, não de cálculo.
   function degrau(item, ehVoce) {
     const div = document.createElement('div');
     div.className = `podio-lugar podio-lugar--${item.posicao}` + (ehVoce ? ' podio-lugar--me' : '');
-
-    const coroa = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    coroa.setAttribute('viewBox', '0 0 24 24');
-    coroa.setAttribute('aria-hidden', 'true');
-    coroa.setAttribute('class', 'podio-coroa');
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', CROA);
-    coroa.appendChild(path);
 
     const nick = document.createElement('span');
     nick.className = 'podio-nick';
@@ -85,12 +101,17 @@
 
     const bloco = document.createElement('div');
     bloco.className = 'podio-bloco';
+    const topo = document.createElement('span');
+    topo.className = 'podio-topo';
+    const face = document.createElement('span');
+    face.className = 'podio-face';
     const num = document.createElement('span');
     num.className = 'podio-num';
     num.textContent = item.posicao;
-    bloco.appendChild(num);
+    face.append(svg('podio-louro', LOURO), num, svg('podio-louro podio-louro--dir', LOURO));
+    bloco.append(topo, face);
 
-    div.append(coroa, nick, score, bloco);
+    div.append(svg('podio-coroa', [['path', { d: CROA }]]), nick, score, bloco);
     return div;
   }
 

@@ -837,9 +837,16 @@ html, body {
 }
 
 /* ---------- Ranking global ----------
-   Mesmo vocabulário do resto do jogo: papel, tinta, moldura de 2px,
-   fonte de display. Os únicos tons novos são ouro/prata/bronze do pódio,
-   e mesmo esses são pastéis para não brigar com o Deserto atrás. */
+   O layout inteiro é medido a partir da arte de referência e expresso em
+   UMA unidade só, --u. Na referência (1852x845) 1u = 1% da altura, ou
+   8.45px; todo tamanho, espaço e fonte abaixo é o valor medido dividido
+   por 8.45. Assim a composição inteira escala junta e as proporções
+   entre coroa, título, pódio, lista e botão ficam travadas em qualquer
+   tela, em vez de cada peça ter o próprio clamp e se soltar das outras.
+
+   --u é limitado pela largura E pela altura: em paisagem manda a
+   largura (é ela que fica apertada numa tela 2:1), em retrato manda a
+   altura. O piso de 2.6px evita texto ilegível em telas minúsculas. */
 #menu-buttons {
   display: flex;
   flex-wrap: wrap;
@@ -847,15 +854,23 @@ html, body {
   gap: clamp(6px, 1.6vmin, 12px);
 }
 
-/* O painel não pinta fundo próprio: quem aparece atrás é o Deserto que o
-   jogo já desenha no canvas — nuvens, montanhas, chão, Mariana e o gato.
-   Nenhum cenário novo, nenhum asset novo. */
 .overlay--ranking {
+  /* 1u = 1% da altura da arte de referência (845px), ou seja 8.45px
+     nela. Por isso 1.0vh: assim cada medida abaixo é literalmente o
+     pixel medido na referência dividido por 8.45. */
+  --u: max(2.6px, min(1vh, 0.5vw));
+  --metal-borda: #2b2b2b;
   z-index: 3;
   background: transparent;
   justify-content: center;
-  gap: clamp(5px, 1.2vmin, 10px);
-  padding: clamp(8px, 2vmin, 16px);
+  gap: 0;
+  /* Assimétrico de propósito: na referência sobra bem mais chão embaixo
+     que céu em cima, então o conjunto fica um pouco acima do centro. */
+  padding: calc(var(--u) * 2) calc(var(--u) * 2) calc(var(--u) * 8);
+}
+
+@media (orientation: portrait) {
+  .overlay--ranking { --u: max(2.6px, min(1vh, 1.15vw)); }
 }
 
 /* Enquanto o ranking está aberto o menu inicial some por visibilidade —
@@ -864,6 +879,7 @@ html, body {
   visibility: hidden;
 }
 
+/* ---------- Cabeçalho ---------- */
 .rank-head {
   display: flex;
   flex-direction: column;
@@ -872,33 +888,53 @@ html, body {
 }
 
 .rank-crown {
-  width: clamp(16px, 4vmin, 28px);
-  height: clamp(16px, 4vmin, 28px);
+  width: calc(var(--u) * 5.7);
+  height: calc(var(--u) * 4.1);
   fill: #d9a441;
   stroke: var(--ink);
   stroke-width: 1.1;
   stroke-linejoin: round;
-  margin-bottom: clamp(-2px, -0.4vmin, -1px);
+  margin-bottom: calc(var(--u) * 1.5);
 }
 
+/* Calibrado pela LARGURA, não pela altura das letras: na referência o
+   título é mais estreito que o cartão da lista, e é essa relação que
+   sustenta a composição. A Press Start 2P é mais quadrada que a fonte da
+   arte, então casar a altura deixaria o título largo demais. */
 .title--rank {
-  font-size: clamp(15px, 4.6vmin, 30px);
-  letter-spacing: clamp(1px, 0.4vmin, 3px);
-  /* Mesma sombra do título da tela inicial: é o que mantém o texto
-     legível por cima do Deserto sem precisar de uma folha de papel. */
-  text-shadow: 0 3px 0 var(--paper-dim);
+  font-size: calc(var(--u) * 4.45);
+  letter-spacing: calc(var(--u) * 0.32);
+  line-height: 1;
+  text-shadow: 0 calc(var(--u) * 0.35) 0 var(--paper-dim);
+}
+
+.overlay--ranking .title-rule {
+  margin-top: calc(var(--u) * 3.2);
+  gap: calc(var(--u) * 1.6);
+}
+
+.overlay--ranking .title-rule::before,
+.overlay--ranking .title-rule::after {
+  width: calc(var(--u) * 14.2);
+  height: calc(var(--u) * 0.42);
+}
+
+.overlay--ranking .title-rule-heart {
+  width: calc(var(--u) * 1.7);
+  height: calc(var(--u) * 1.7);
 }
 
 /* ---------- Pódio ----------
-   Ordem visual 2-1-3 vem do JS; aqui só as alturas e as cores. Os itens
-   alinham pela base, então o degrau mais alto empurra o nick para cima
-   sozinho, sem posicionamento absoluto. */
+   Os três degraus se encostam: na referência não há vão entre eles, o
+   conjunto lê como UM bloco escalonado. A ordem visual 2-1-3 vem do JS;
+   aqui ficam só larguras, alturas e metais. */
 .rank-podio {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  gap: clamp(4px, 1.2vmin, 10px);
+  gap: 0;
   flex: none;
+  margin-top: calc(var(--u) * 4.1);
 }
 
 .rank-podio:empty {
@@ -909,14 +945,12 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: clamp(72px, 17vmin, 118px);
   text-align: center;
-  line-height: 1.2;
+  line-height: 1.15;
+  min-width: 0;
 }
 
 .podio-coroa {
-  width: clamp(12px, 3vmin, 20px);
-  height: clamp(12px, 3vmin, 20px);
   stroke: var(--ink);
   stroke-width: 1.1;
   stroke-linejoin: round;
@@ -924,66 +958,120 @@ html, body {
 
 .podio-nick {
   font-family: var(--font-display);
-  font-size: clamp(7px, 1.7vmin, 11px);
+  font-size: calc(var(--u) * 1.95);
   color: var(--ink);
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  text-shadow: 0 2px 0 var(--paper-dim);
+  margin-top: calc(var(--u) * 0.9);
+  text-shadow: 0 calc(var(--u) * 0.22) 0 var(--paper-dim);
 }
 
 .podio-score {
   font-family: var(--font-display);
-  font-size: clamp(8px, 2vmin, 13px);
+  font-size: calc(var(--u) * 2.3);
   color: var(--ink);
-  margin-top: clamp(1px, 0.4vmin, 3px);
-  text-shadow: 0 2px 0 var(--paper-dim);
+  margin-top: calc(var(--u) * 1);
+  text-shadow: 0 calc(var(--u) * 0.22) 0 var(--paper-dim);
 }
 
-/* Bloco fechado, topo arredondado e base reta: assim ele lê como um
-   degrau APOIADO no cartão da lista logo abaixo, em vez de parecer
-   cortado por ele. */
 .podio-bloco {
   width: 100%;
-  margin-top: clamp(3px, 0.8vmin, 6px);
-  border: 2px solid var(--ink);
-  border-radius: 4px 4px 0 0;
+  margin-top: calc(var(--u) * 1.1);
+  border: calc(var(--u) * 0.32) solid var(--metal-borda);
+  border-radius: calc(var(--u) * 0.5) calc(var(--u) * 0.5) 0 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Face superior mais clara: é o que dá o volume dos blocos da
+   referência sem precisar de projeção 3D de verdade. */
+.podio-topo {
+  display: block;
+  height: calc(var(--u) * 1.5);
+  flex: none;
+  border-bottom: calc(var(--u) * 0.22) solid rgba(43, 43, 43, 0.45);
+}
+
+.podio-face {
+  flex: 1 1 auto;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: calc(var(--u) * 0.5);
+  min-height: 0;
 }
 
 .podio-num {
   font-family: var(--font-display);
-  font-size: clamp(11px, 2.8vmin, 18px);
   color: var(--ink);
 }
 
-/* Alturas e metais. O primeiro é o mais alto; o terceiro, o mais baixo. */
-.podio-lugar--1 .podio-bloco { height: clamp(36px, 9vmin, 62px); background: #e7c46a; }
+.podio-louro {
+  flex: none;
+  fill: currentColor;
+  stroke: currentColor;
+  opacity: 0.62;
+}
+
+.podio-louro--dir {
+  transform: scaleX(-1);
+}
+
+/* Larguras, alturas e metais medidos na referência. */
+.podio-lugar--1 { width: calc(var(--u) * 24.9); }
+.podio-lugar--2 { width: calc(var(--u) * 21.7); }
+.podio-lugar--3 { width: calc(var(--u) * 20.5); }
+
+.podio-lugar--1 .podio-coroa { width: calc(var(--u) * 6.5); height: calc(var(--u) * 4.1); }
+.podio-lugar--2 .podio-coroa,
+.podio-lugar--3 .podio-coroa { width: calc(var(--u) * 5.3); height: calc(var(--u) * 3.4); }
+
+.podio-lugar--1 .podio-bloco { height: calc(var(--u) * 12.4); background: #e7c46a; }
+.podio-lugar--2 .podio-bloco { height: calc(var(--u) * 7.7); background: #c9ced6; }
+.podio-lugar--3 .podio-bloco { height: calc(var(--u) * 6.5); background: #c99177; }
+
+.podio-lugar--1 .podio-topo { background: #f2d98f; }
+.podio-lugar--2 .podio-topo { background: #e2e6eb; }
+.podio-lugar--3 .podio-topo { background: #e0b49e; }
+
 .podio-lugar--1 .podio-coroa { fill: #d9a441; }
-.podio-lugar--2 .podio-bloco { height: clamp(26px, 6.6vmin, 46px); background: #ccd0d6; }
-.podio-lugar--2 .podio-coroa { fill: #aab0b8; }
-.podio-lugar--3 .podio-bloco { height: clamp(20px, 5.2vmin, 36px); background: #d3a084; }
+.podio-lugar--2 .podio-coroa { fill: #a9b0b9; }
 .podio-lugar--3 .podio-coroa { fill: #b87a58; }
+
+.podio-lugar--1 .podio-num { font-size: calc(var(--u) * 4.2); }
+.podio-lugar--2 .podio-num,
+.podio-lugar--3 .podio-num { font-size: calc(var(--u) * 3.2); }
+
+.podio-lugar--1 .podio-louro { width: calc(var(--u) * 5.4); height: calc(var(--u) * 5.4); }
+.podio-lugar--2 .podio-louro,
+.podio-lugar--3 .podio-louro { width: calc(var(--u) * 4.2); height: calc(var(--u) * 4.2); }
+
+/* O primeiro lugar tem a pontuação em destaque, como na referência. */
+.podio-lugar--1 .podio-score {
+  font-size: calc(var(--u) * 3);
+  color: #3a5a8c;
+}
 
 /* "esse sou eu" no pódio: moldura mais grossa, sem cor nova. */
 .podio-lugar--me .podio-bloco {
-  border-width: 4px;
-  box-shadow: inset 0 3px 0 rgba(43, 43, 43, 0.18);
+  border-width: calc(var(--u) * 0.62);
 }
 
-/* ---------- Lista do 4º em diante ---------- */
+/* ---------- Lista do 4º em diante ----------
+   Encosta no pódio: na referência o cartão começa exatamente na base dos
+   degraus e é um pouco mais largo que o conjunto deles. */
 .rank-list {
   list-style: none;
   margin: 0;
-  padding: clamp(3px, 0.8vmin, 6px) clamp(4px, 1vmin, 8px);
-  width: min(440px, 94%);
-  background: rgba(243, 234, 217, 0.92);
-  border: 2px solid var(--ink);
-  border-radius: 4px;
-  /* Encolhe e rola em vez de empurrar o VOLTAR para fora da tela. */
+  padding: calc(var(--u) * 0.8) calc(var(--u) * 1.4);
+  width: calc(var(--u) * 76.9);
+  max-width: 100%;
+  background: rgba(243, 234, 217, 0.94);
+  border: calc(var(--u) * 0.3) solid var(--ink);
+  border-radius: calc(var(--u) * 0.9);
   flex: 0 1 auto;
   min-height: 0;
   overflow-y: auto;
@@ -995,13 +1083,14 @@ html, body {
 
 .rank-row {
   display: grid;
-  grid-template-columns: 2.4em 1fr auto;
+  grid-template-columns: calc(var(--u) * 5.5) 1fr auto;
   align-items: center;
-  gap: clamp(6px, 1.6vmin, 12px);
-  padding: clamp(3px, 0.8vmin, 6px) clamp(5px, 1.2vmin, 9px);
-  border-bottom: 1px solid rgba(43, 43, 43, 0.14);
+  gap: calc(var(--u) * 1.5);
+  height: calc(var(--u) * 4.6);
+  padding: 0 calc(var(--u) * 1.4);
+  border-bottom: 1px solid rgba(43, 43, 43, 0.13);
   font-family: var(--font-display);
-  font-size: clamp(7px, 1.8vmin, 11px);
+  font-size: calc(var(--u) * 1.95);
   /* #game-frame zera line-height para o próprio layout; sem restaurar
      aqui o texto fica numa linha de altura zero. */
   line-height: 1.15;
@@ -1014,6 +1103,7 @@ html, body {
 
 .rank-pos {
   color: var(--muted);
+  text-align: center;
 }
 
 .rank-nick {
@@ -1031,29 +1121,31 @@ html, body {
    nova. Usa box-shadow em vez de border para não mexer na altura. */
 .rank-row--me {
   background: var(--paper-dim);
-  box-shadow: inset 0 0 0 2px var(--ink);
-  border-radius: 3px;
+  box-shadow: inset 0 0 0 calc(var(--u) * 0.3) rgba(43, 43, 43, 0.55);
+  border-radius: calc(var(--u) * 0.6);
 }
 
 .rank-me {
-  width: min(440px, 94%);
+  width: calc(var(--u) * 76.9);
+  max-width: 100%;
   flex: none;
-  padding: clamp(3px, 0.8vmin, 6px) clamp(4px, 1vmin, 8px);
-  background: rgba(243, 234, 217, 0.92);
-  border: 2px dashed var(--ink);
-  border-radius: 4px;
+  margin-top: calc(var(--u) * 1.2);
+  padding: calc(var(--u) * 0.8) calc(var(--u) * 1.4);
+  background: rgba(243, 234, 217, 0.94);
+  border: calc(var(--u) * 0.3) dashed var(--ink);
+  border-radius: calc(var(--u) * 0.9);
 }
 
 .rank-me-label {
   display: block;
   font-family: var(--font-display);
-  font-size: clamp(6px, 1.4vmin, 9px);
+  font-size: calc(var(--u) * 1.5);
   letter-spacing: 1px;
   color: var(--muted);
   text-align: left;
   /* Sem isto o line-height:0 do #game-frame corta o cedilha de POSIÇÃO. */
   line-height: 1.4;
-  padding: 0 clamp(5px, 1.2vmin, 9px) clamp(2px, 0.6vmin, 4px);
+  padding: 0 calc(var(--u) * 1.4) calc(var(--u) * 0.5);
 }
 
 .rank-me .rank-list {
@@ -1065,13 +1157,30 @@ html, body {
 }
 
 .rank-msg {
-  margin: 0;
+  margin: calc(var(--u) * 1.4) 0 0;
   flex: none;
   font-family: var(--font-body);
-  font-size: clamp(12px, 2.8vmin, 17px);
+  font-size: calc(var(--u) * 2.6);
   line-height: 1.2;
   color: var(--muted);
-  max-width: min(440px, 94%);
-  text-shadow: 0 2px 0 var(--paper-dim);
+  max-width: calc(var(--u) * 76.9);
+  text-shadow: 0 calc(var(--u) * 0.22) 0 var(--paper-dim);
+}
+
+/* Mesmo botão de sempre — moldura, sombra impressa e o empurrão ao
+   apertar vêm de .pixel-btn; aqui só a escala entra na proporção da
+   referência. */
+#btn-ranking-back {
+  margin-top: calc(var(--u) * 2.4);
+  flex: none;
+  font-size: calc(var(--u) * 2);
+  padding: calc(var(--u) * 1.5) calc(var(--u) * 6.1);
+  border-width: calc(var(--u) * 0.35);
+  box-shadow: 0 calc(var(--u) * 0.45) 0 var(--ink);
+}
+
+#btn-ranking-back:active {
+  transform: translateY(calc(var(--u) * 0.45));
+  box-shadow: 0 0 0 var(--ink);
 }
 
