@@ -33,9 +33,11 @@
     shield: document.getElementById('status-shield'),
     star: document.getElementById('status-star'),
     jump: document.getElementById('status-jump'),
+    coins: document.getElementById('status-coins'),
   };
   const statusStarTime = document.getElementById('status-star-time');
   const statusJumpTime = document.getElementById('status-jump-time');
+  const statusCoinsTime = document.getElementById('status-coins-time');
 
   const overlays = {
     loading: document.getElementById('overlay-loading'),
@@ -275,6 +277,13 @@
   };
   const POWERUP_TYPES = ['shield', 'star', 'jump'];
 
+  // 2x moedas. Fica FORA de POWERUP_TYPES de propósito: os três acima
+  // continuam sendo sorteados entre si exatamente como antes, e este tem
+  // agenda própria — por tempo, não por distância como a dos outros.
+  const COIN_BONUS_DURATION = 10;      // segundos de efeito
+  const COIN_POWERUP_MIN_GAP = 15;     // segundos entre aparições
+  const COIN_POWERUP_MAX_GAP = 20;
+
   // ---------------------------------------------------------
   // Day/dusk/night lighting cycle — a continuous color-multiply wash
   // over the existing art (plus a fading procedural star field), so
@@ -401,8 +410,15 @@
   let airJumpsUsed = 0;
   let scoreMultiplier = 1;
   let multiplierTimer = 0;
+  // Multiplicador SÓ das moedas — separado de scoreMultiplier, que é só
+  // da pontuação. Por isso os dois podem estar ativos ao mesmo tempo sem
+  // um interferir no outro.
+  let coinMultiplier = 1;
+  let coinBonusTimer = 0;
+  let nextCoinPowerupIn = 0;
   let lastShownStarSeconds = null;
   let lastShownJumpSeconds = null;
+  let lastShownCoinSeconds = null;
 
   // Obstacle-clear streak: a quiet, no-HUD flourish that celebrates
   // skilled play specifically (as opposed to lucky powerup pickups),
@@ -745,6 +761,22 @@
     distanceSinceLastPowerup = 0;
   }
 
+  // Agenda do 2x moedas: sorteia um intervalo novo a cada aparição, então
+  // nunca cai num ritmo fixo. Em segundos, não em distância percorrida —
+  // a distância encurta em tempo conforme o jogo acelera, e o pedido era
+  // 15 a 20 segundos de verdade.
+  function scheduleCoinPowerup() {
+    nextCoinPowerupIn = COIN_POWERUP_MIN_GAP +
+      Math.random() * (COIN_POWERUP_MAX_GAP - COIN_POWERUP_MIN_GAP);
+  }
+
+  // Entra no mesmo array dos outros power-ups, então herda movimento,
+  // caixa de coleta, desenho e limpeza sem duplicar nada disso.
+  function spawnCoinPowerup() {
+    const baseY = GROUND_Y - 95 - Math.random() * 20;
+    powerups.push({ x: W + 10, w: POWERUP_SIZE, h: POWERUP_SIZE, type: 'coins', baseY, bobPhase: Math.random() * Math.PI * 2 });
+  }
+
   function scheduleNextCoinCluster() {
     nextCoinGap = rollCoinClusterGap();
     distanceSinceLastCoinCluster = 0;
@@ -765,7 +797,9 @@
   }
 
   function collectCoin(x, y) {
-    coinBalance = SkinStore.addCoins(1);
+    // Único ponto onde o 2x moedas age: o valor da moeda coletada.
+    // Nada muda na quantidade, posição ou frequência das moedas.
+    coinBalance = SkinStore.addCoins(coinMultiplier);
     updateCoinsHud();
     AudioMgr.coin();
     Particles.dust(x, y, { count: 4, color: 'rgba(230,180,60,' });
@@ -861,8 +895,10 @@
     statusBadges.shield.hidden = !shieldActive;
     statusBadges.star.hidden = multiplierTimer <= 0;
     statusBadges.jump.hidden = !doubleJumpActive;
+    statusBadges.coins.hidden = coinBonusTimer <= 0;
     if (multiplierTimer <= 0) lastShownStarSeconds = null;
     if (!doubleJumpActive) lastShownJumpSeconds = null;
+    if (coinBonusTimer <= 0) lastShownCoinSeconds = null;
   }
 
   function updateStatusTimers() {
@@ -880,6 +916,13 @@
         statusJumpTime.textContent = secs + 's';
       }
     }
+    if (coinBonusTimer > 0) {
+      const secs = Math.ceil(coinBonusTimer);
+      if (secs !== lastShownCoinSeconds) {
+        lastShownCoinSeconds = secs;
+        statusCoinsTime.textContent = secs + 's';
+      }
+    }
   }
 
   function collectPowerup(type, x, y) {
@@ -895,6 +938,9 @@
       doubleJumpActive = true;
       doubleJumpTimer = DOUBLE_JUMP_DURATION;
       airJumpsUsed = 0;
+    } else if (type === 'coins') {
+      coinMultiplier = 2;
+      coinBonusTimer = COIN_BONUS_DURATION;
     }
     updateStatusBadges();
   }
@@ -1071,6 +1117,8 @@
     airJumpsUsed = 0;
     scoreMultiplier = 1;
     multiplierTimer = 0;
+    coinMultiplier = 1;
+    coinBonusTimer = 0;
     obstacleStreak = 0;
     recordBrokenThisRun = false;
     jumpBufferTimer = 0;
@@ -1078,6 +1126,7 @@
     scheduleNextSpawn();
     scheduleNextDecor();
     schedulePowerupSpawn();
+    scheduleCoinPowerup();
     scheduleNextCoinCluster();
     lastTime = null;
     setState('playing');
@@ -1098,6 +1147,8 @@
     doubleJumpTimer = 0;
     scoreMultiplier = 1;
     multiplierTimer = 0;
+    coinMultiplier = 1;
+    coinBonusTimer = 0;
     updateStatusBadges();
     setState('gameover');
     AudioMgr.hit();
@@ -1284,6 +1335,10 @@
       doubleJumpTimer -= dt;
       if (doubleJumpTimer <= 0) { doubleJumpTimer = 0; doubleJumpActive = false; updateStatusBadges(); }
     }
+    if (coinBonusTimer > 0) {
+      coinBonusTimer -= dt;
+      if (coinBonusTimer <= 0) { coinBonusTimer = 0; coinMultiplier = 1; updateStatusBadges(); }
+    }
     if (jumpBufferTimer > 0) jumpBufferTimer -= dt;
     updateStatusTimers();
 
@@ -1380,6 +1435,12 @@
       if (distanceSinceLastPowerup >= nextPowerupGap) {
         if (score >= POWERUP_MIN_SCORE) spawnPowerup();
         schedulePowerupSpawn();
+      }
+      // 2x moedas: relógio próprio, sem relação com o cronômetro acima.
+      nextCoinPowerupIn -= dt;
+      if (nextCoinPowerupIn <= 0) {
+        if (score >= POWERUP_MIN_SCORE) spawnCoinPowerup();
+        scheduleCoinPowerup();
       }
     }
     for (const p of powerups) p.x -= speed * dt;
@@ -1556,7 +1617,33 @@
       if (p.type === 'shield') drawIconGlyph(ICON_PATHS.shield, cx, cy, iconSize, { stroke: '#2b2b2b', lineWidth: 2.2 });
       else if (p.type === 'star') drawIconGlyph(ICON_PATHS.star, cx, cy, iconSize, { fill: '#2b2b2b' });
       else if (p.type === 'jump') drawIconGlyph(ICON_PATHS.jump, cx, cy, iconSize, { fill: '#2b2b2b' });
+      else if (p.type === 'coins') drawCoinPairGlyph(cx, cy, iconSize);
     }
+  }
+
+  // Duas moedas sobrepostas, desenhadas com o mesmo dourado e o mesmo
+  // traço das moedas do chão (ver drawCoins) — é o que faz este power-up
+  // ser lido como "moedas" de imediato, enquanto escudo, estrela e seta
+  // seguem monocromáticos. Nenhum texto: o canvas do jogo nunca usou.
+  function drawCoinPairGlyph(cx, cy, size) {
+    const r = size * 0.34;
+    ctx.save();
+    for (const dx of [-size * 0.16, size * 0.16]) {
+      ctx.fillStyle = '#f0c04a';
+      ctx.strokeStyle = '#2b2b2b';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(cx + dx, cy, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.moveTo(cx + size * 0.16, cy - r * 0.5);
+    ctx.lineTo(cx + size * 0.16, cy + r * 0.5);
+    ctx.strokeStyle = '#c99a2e';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.restore();
   }
 
   function drawCoins() {
