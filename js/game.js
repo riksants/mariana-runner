@@ -274,6 +274,11 @@
     shield: new Path2D('M12 2 4 5v6c0 5 3.5 9 8 11 4.5-2 8-6 8-11V5l-8-3z'),
     star: new Path2D('M12 2l2.9 6.6L22 9.3l-5 4.9 1.2 7.1L12 17.9 5.8 21.3 7 14.2 2 9.3l7.1-.7L12 2z'),
     jump: new Path2D('M12 5l7 7h-4v7h-6v-7H5l7-7z'),
+    // Cifrão para o 2x moedas: o traço em S mais a barra vertical, no
+    // mesmo espaço 24x24 dos ícones acima. Desenhado só com traço, como
+    // o escudo — a moeda dourada que ficava aqui antes confundia o
+    // power-up com as moedas comuns do chão.
+    coins: new Path2D('M16.5 8.5C16.5 6.7 14.5 5.6 12 5.6C9.5 5.6 7.5 6.7 7.5 8.5C7.5 10.3 9.5 11.1 12 12C14.5 12.9 16.5 13.7 16.5 15.5C16.5 17.3 14.5 18.4 12 18.4C9.5 18.4 7.5 17.3 7.5 15.5M12 2.5L12 21.5'),
   };
   const POWERUP_TYPES = ['shield', 'star', 'jump'];
 
@@ -1617,33 +1622,8 @@
       if (p.type === 'shield') drawIconGlyph(ICON_PATHS.shield, cx, cy, iconSize, { stroke: '#2b2b2b', lineWidth: 2.2 });
       else if (p.type === 'star') drawIconGlyph(ICON_PATHS.star, cx, cy, iconSize, { fill: '#2b2b2b' });
       else if (p.type === 'jump') drawIconGlyph(ICON_PATHS.jump, cx, cy, iconSize, { fill: '#2b2b2b' });
-      else if (p.type === 'coins') drawCoinPairGlyph(cx, cy, iconSize);
+      else if (p.type === 'coins') drawIconGlyph(ICON_PATHS.coins, cx, cy, iconSize, { stroke: '#2b2b2b', lineWidth: 2.6 });
     }
-  }
-
-  // Duas moedas sobrepostas, desenhadas com o mesmo dourado e o mesmo
-  // traço das moedas do chão (ver drawCoins) — é o que faz este power-up
-  // ser lido como "moedas" de imediato, enquanto escudo, estrela e seta
-  // seguem monocromáticos. Nenhum texto: o canvas do jogo nunca usou.
-  function drawCoinPairGlyph(cx, cy, size) {
-    const r = size * 0.34;
-    ctx.save();
-    for (const dx of [-size * 0.16, size * 0.16]) {
-      ctx.fillStyle = '#f0c04a';
-      ctx.strokeStyle = '#2b2b2b';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(cx + dx, cy, r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-    }
-    ctx.beginPath();
-    ctx.moveTo(cx + size * 0.16, cy - r * 0.5);
-    ctx.lineTo(cx + size * 0.16, cy + r * 0.5);
-    ctx.strokeStyle = '#c99a2e';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-    ctx.restore();
   }
 
   function drawCoins() {
