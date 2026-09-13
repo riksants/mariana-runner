@@ -53,8 +53,10 @@ const SPRITE_PATHS = {
   vulcaoObstacleBig: 'assets/sprites/biome_obstacle_vulcao_big.png',
   vulcaoObstacleRock: 'assets/sprites/biome_obstacle_vulcao_rock.png',
   vulcaoObstacleRockSmall: 'assets/sprites/biome_obstacle_vulcao_rockSmall.png',
-  vulcaoDecor1: 'assets/sprites/biome_decor_vulcao_1.png',
-  vulcaoDecor2: 'assets/sprites/biome_decor_vulcao_2.png',
+  // Quinto obstáculo, só do Vulcão — era decoração e passou a ter
+  // colisão, porque de longe não dava para distinguir do monte de
+  // rochas, que sempre fez perder.
+  vulcaoObstacleBlock: 'assets/sprites/biome_obstacle_vulcao_block.png',
 
   // Checkpoint portals, named after the biome they appear IN — the scene
   // framed inside each arch previews the biome it leads to. WebP rather

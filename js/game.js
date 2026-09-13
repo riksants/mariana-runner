@@ -576,7 +576,10 @@
     desert: { cactusSmall: 'cactusSmall', cactusBig: 'cactusBig', rock: 'rock', rockSmall: 'rockSmall' },
     selva: { cactusSmall: 'selvaObstacleSmall', cactusBig: 'selvaObstacleBig', rock: 'selvaObstacleRock', rockSmall: 'selvaObstacleRockSmall' },
     neve: { cactusSmall: 'neveObstacleSmall', cactusBig: 'neveObstacleBig', rock: 'neveObstacleRock', rockSmall: 'neveObstacleRockSmall' },
-    vulcao: { cactusSmall: 'vulcaoObstacleSmall', cactusBig: 'vulcaoObstacleBig', rock: 'vulcaoObstacleRock', rockSmall: 'vulcaoObstacleRockSmall' },
+    // "block" é um quinto tipo opcional: só entra no sorteio nos biomas
+    // que declaram arte para ele (ver unlockedTypes), então os demais
+    // seguem com os mesmos quatro de sempre.
+    vulcao: { cactusSmall: 'vulcaoObstacleSmall', cactusBig: 'vulcaoObstacleBig', rock: 'vulcaoObstacleRock', rockSmall: 'vulcaoObstacleRockSmall', block: 'vulcaoObstacleBlock' },
   };
 
   function reactionTimeFloor() {
@@ -599,6 +602,11 @@
     if (score >= 500) types.push('cactusBig');
     if (score >= 1500) types.push('rock');
     if (score >= 3500) types.push('rockSmall');
+    // Tipo extra por bioma: entra apenas onde BIOME_OBSTACLE_SPRITES
+    // declara arte para ele. Os quatro acima e seus limiares seguem
+    // intocados, e um bioma sem "block" sorteia exatamente como antes.
+    const sprites = BIOME_OBSTACLE_SPRITES[activeBiome()];
+    if (sprites && sprites.block && score >= 1500) types.push('block');
     return types;
   }
 
@@ -618,6 +626,10 @@
       case 'cactusBig': return { img: SPRITES[sprites.cactusBig], h: CACTUS_BIG_H };
       case 'rock': return { img: SPRITES[sprites.rock], h: ROCK_H };
       case 'rockSmall': return { img: SPRITES[sprites.rockSmall], h: ROCK_SMALL_H };
+      // Mesma altura do monte de rochas de propósito: o tempo de salto
+      // para limpá-lo é o que a jogadora já conhece, então o obstáculo
+      // novo não muda a dificuldade, só o repertório visual.
+      case 'block': return { img: SPRITES[sprites.block], h: ROCK_H };
     }
   }
 
@@ -711,7 +723,10 @@
     desert: ['bush', 'sign', 'fence'],
     selva: [],
     neve: ['neveDecor1', 'neveDecor2'],
-    vulcao: ['vulcaoDecor1', 'vulcaoDecor2'],
+    // Vulcão também roda sem decoração de chão: o arco de pedra parecia
+    // um portão sólido mas se atravessava, e o bloco virou obstáculo de
+    // verdade (ver BIOME_OBSTACLE_SPRITES).
+    vulcao: [],
   };
   function spawnDecor() {
     const types = DECOR_TYPES[activeBiome()] || DECOR_TYPES.desert;
