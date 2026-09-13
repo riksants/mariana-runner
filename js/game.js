@@ -608,8 +608,73 @@
     return Math.max(0.55, t);
   }
 
-  function maxClusterWidth(speed) {
-    return speed * AIR_TIME * 0.72;
+  // ---------------------------------------------------------
+  // Progressão de dificuldade por bioma
+  // ---------------------------------------------------------
+  // Regra desta seção: a dificuldade sobe SÓ pela geração de obstáculos —
+  // frequência de combinações, variedade dos tipos e encurtamento dos
+  // trechos vazios. Nada aqui toca velocidade, aceleração, física, salto
+  // ou hitbox: currentSpeed(), GRAVITY, JUMP_VELOCITY e
+  // reactionTimeFloor() continuam exatamente como estavam.
+  //
+  // O espaçamento MÍNIMO entre grupos nunca encolhe. O que diminui com a
+  // dificuldade é a cauda longa dos intervalos (os trechos completamente
+  // vazios), então o pior caso de reação de qualquer bioma continua sendo
+  // o mesmo pior caso que o Deserto já tinha.
+  //
+  // Em dificuldade 1.00 todo knob abaixo devolve exatamente o valor que o
+  // jogo usava antes desta seção existir — por isso o primeiro Deserto de
+  // cada partida se comporta como sempre se comportou.
+  const BIOME_DIFFICULTY = { desert: 1.00, selva: 1.12, neve: 1.22, vulcao: 1.32 };
+  const DIFFICULTY_PER_CYCLE = 1.05; // +5% a cada volta completa pelos 4 biomas
+  const DIFFICULTY_MAX = 1.60;       // teto: acima disto a partida vira sorte, não perícia
+  function currentDifficulty() {
+    // portalsSpawned conta checkpoints atravessados; biomeIndex volta a 0
+    // a cada ciclo, então é ele que diz em qual volta estamos.
+    const cycle = Math.floor(portalsSpawned / BIOME_ORDER.length);
+    const base = BIOME_DIFFICULTY[activeBiome()] || 1;
+    return Math.min(DIFFICULTY_MAX, base * Math.pow(DIFFICULTY_PER_CYCLE, cycle));
+  }
+
+  function difficultyKnobs() {
+    const over = currentDifficulty() - 1;
+    return {
+      // Teto do sorteio do intervalo entre grupos. O piso (0.5) é
+      // intencionalmente constante: encurtar a cauda tira trecho vazio
+      // sem nunca apertar o espaçamento mínimo.
+      gapSpreadMax: Math.max(0.85, 1.5 - over * 1.6),
+      clusterCap: Math.min(0.80, 0.6 + over * 0.45),
+      tripleChance: Math.min(0.70, 0.45 + over * 0.40),
+      // Chance de o grupo sortear livremente entre os tipos já liberados
+      // do bioma, em vez do par cacto-pequeno/cacto-grande de sempre.
+      varietyChance: Math.min(0.80, over * 2.5),
+    };
+  }
+
+  // Distância horizontal durante a qual o hitbox da Mariana fica ACIMA de
+  // um obstáculo de altura h, já descontadas a largura dela e uma margem
+  // de segurança — nenhum grupo pode ocupar mais do que isso.
+  //   0.88h  = topo do hitbox do obstáculo (ver colisão: h - 0.12h)
+  //   7      = folga entre os pés e a base do hitbox da Mariana, no pior
+  //            caso (skin "mini", que encolhe a folga de 10 para 7.2)
+  // A conta usa a altura do obstáculo MAIS ALTO do grupo para o grupo
+  // inteiro, o que é mais rígido do que a física exige — é de propósito.
+  const CLUSTER_SAFETY_MARGIN = 18; // unidades ~ 0.026 s a 700 u/s, além do salto no limite
+  function clusterSpanLimit(h, speed) {
+    const lift = Math.max(0, 0.88 * h - 7);
+    const inner = JUMP_VELOCITY * JUMP_VELOCITY - 2 * GRAVITY * lift;
+    if (inner <= 0) return 0;
+    const airborneAbove = (2 * Math.sqrt(inner)) / GRAVITY;
+    return speed * airborneAbove - PLAYER_HITBOX.width - CLUSTER_SAFETY_MARGIN;
+  }
+
+  // Extensão realmente colidível de um grupo: da borda esquerda do hitbox
+  // do primeiro à borda direita do hitbox do último (ver colisão: cada
+  // obstáculo só colide entre 18% e 82% da própria largura).
+  function clusterSpan(planned, gapBetween) {
+    if (!planned.length) return 0;
+    const drawn = planned.reduce((sum, p) => sum + p.dims.w, 0) + (planned.length - 1) * gapBetween;
+    return drawn - 0.18 * planned[0].dims.w - 0.18 * planned[planned.length - 1].dims.w;
   }
 
   // Thresholds retuned 2026-09-05: at the original 70/150/260, every
@@ -633,7 +698,7 @@
 
   function clusterChance() {
     if (score < 130) return 0;
-    return Math.min(0.6, (score - 130) / 900);
+    return Math.min(difficultyKnobs().clusterCap, (score - 130) / 900);
   }
 
   function pickObstacleType(types) {
@@ -667,20 +732,29 @@
     let groupEndX = startX;
 
     if (Math.random() < clusterChance()) {
-      const maxW = maxClusterWidth(speed);
+      const knobs = difficultyKnobs();
       const gapBetween = 18 + Math.random() * 14;
-      const count = Math.random() < 0.55 ? 2 : 3;
+      const count = Math.random() < knobs.tripleChance ? 3 : 2;
+      // Grupo "variado" sorteia entre todos os tipos já liberados do
+      // bioma; o grupo normal segue sendo o par cacto-pequeno com um
+      // cacto-grande ocasional na frente, como sempre foi.
+      const varied = Math.random() < knobs.varietyChance;
       let cursor = startX;
-      let totalW = 0;
       const planned = [];
+      let tallest = 0;
       for (let i = 0; i < count; i++) {
-        const type = i === 0 && types.includes('cactusBig') && Math.random() < 0.3
-          ? 'cactusBig' : 'cactusSmall';
+        const type = varied
+          ? pickObstacleType(types)
+          : (i === 0 && types.includes('cactusBig') && Math.random() < 0.3 ? 'cactusBig' : 'cactusSmall');
         const dims = obstacleDims(type, spawnBiome);
-        const addW = (planned.length ? gapBetween : 0) + dims.w;
-        if (totalW + addW > maxW && planned.length > 0) break;
+        const tallestNext = Math.max(tallest, dims.h);
+        const spanNext = clusterSpan(planned.concat([{ dims }]), gapBetween);
+        // Corta o grupo assim que ele passaria do que o salto atual limpa
+        // com folga. Nunca cria a sequência impossível: prefere um grupo
+        // menor a um grupo largo demais.
+        if (spanNext > clusterSpanLimit(tallestNext, speed) && planned.length > 0) break;
         planned.push({ type, dims });
-        totalW += addW;
+        tallest = tallestNext;
       }
       planned.forEach((p) => {
         obstacles.push({ x: cursor, w: p.dims.w, h: p.dims.h, type: p.type, biome: spawnBiome });
@@ -694,6 +768,10 @@
       groupEndX = startX + dims.w;
     }
     maybeSpawnRewardCoins(groupEndX);
+    // Largura ocupada de fato (borda direita do último obstáculo), para
+    // scheduleNextSpawn poder garantir o trecho livre depois do grupo.
+    const last = obstacles[obstacles.length - 1];
+    return last ? (last.x + last.w) - startX : 0;
   }
 
   // Reward coins: sit just behind an obstacle group, inside the arc a
@@ -718,11 +796,20 @@
     }
   }
 
-  function scheduleNextSpawn() {
+  // Trecho livre mínimo (unidades de mundo) entre a borda direita de um
+  // grupo e a borda esquerda do próximo. É o pior caso que o jogo já
+  // tinha antes desta mudança (intervalo mínimo de 1.5x menos o grupo
+  // mais largo possível), promovido a piso explícito: nenhum aumento de
+  // dificuldade pode espremer mais do que isto, em bioma nenhum, em ciclo
+  // nenhum. A física exige ~171 unidades para pousar e saltar de novo no
+  // limite do quadro; o resto é margem humana.
+  const SAFE_CLEAR_GAP = 260;
+  function scheduleNextSpawn(groupWidth = 0) {
     const speed = currentSpeed();
     const minGap = speed * reactionTimeFloor();
-    const variability = minGap * (0.5 + Math.random() * 1.0);
-    nextSpawnGap = minGap + variability;
+    const spreadMax = difficultyKnobs().gapSpreadMax;
+    const variability = minGap * (0.5 + Math.random() * (spreadMax - 0.5));
+    nextSpawnGap = Math.max(minGap + variability, groupWidth + SAFE_CLEAR_GAP);
     distanceSinceLastSpawn = 0;
   }
 
@@ -1410,8 +1497,7 @@
     if (!portal) {
       distanceSinceLastSpawn += speed * dt;
       if (distanceSinceLastSpawn >= nextSpawnGap) {
-        spawnObstacleGroup();
-        scheduleNextSpawn();
+        scheduleNextSpawn(spawnObstacleGroup());
       }
     }
     for (const o of obstacles) o.x -= speed * dt;
