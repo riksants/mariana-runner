@@ -702,14 +702,20 @@
   // BIOME_OBSTACLE_SPRITES above — a spawn always reads the biome fresh
   // via activeBiome(), so desert's bush/sign/fence never appears once a
   // biome swap has happened, and vice versa.
+  // Selva roda sem decoração de chão: a cerca de estacas e a moita
+  // redonda ficavam na mesma linha dos obstáculos e eram confundidas com
+  // eles — em especial a cerca, feita da mesma madeira com cipó da
+  // estaca alta, que essa sim faz perder. Lista vazia é o desligamento;
+  // os obstáculos da Selva seguem intactos.
   const DECOR_TYPES = {
     desert: ['bush', 'sign', 'fence'],
-    selva: ['selvaDecor1', 'selvaDecor2'],
+    selva: [],
     neve: ['neveDecor1', 'neveDecor2'],
     vulcao: ['vulcaoDecor1', 'vulcaoDecor2'],
   };
   function spawnDecor() {
     const types = DECOR_TYPES[activeBiome()] || DECOR_TYPES.desert;
+    if (!types.length) return;
     const key = types[Math.floor(Math.random() * types.length)];
     const img = SPRITES[key];
     const w = spriteWidthForHeight(img, DECOR_H);
