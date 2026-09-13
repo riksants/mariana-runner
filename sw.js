@@ -46,8 +46,12 @@
 // .webp URLs. v14, 2026-09-12: added js/cloud-save.js + js/account-ui.js
 // to the shell so the account screen works offline too. The Supabase
 // calls themselves are cross-origin and POST, so the fetch handler below
-// already ignores them — no change to caching strategy was needed.)
-const CACHE_NAME = 'mariana-runner-v14';
+// already ignores them — no change to caching strategy was needed.
+// v15, 2026-09-13: added js/leaderboard.js (ranking global) ao shell. As
+// duas leituras do ranking são POST cross-origin, então o fetch handler
+// abaixo também as ignora — sem conexão o painel mostra o aviso de
+// indisponível e o jogo segue normalmente.)
+const CACHE_NAME = 'mariana-runner-v15';
 const APP_SHELL = [
   './',
   './index.html',
@@ -55,6 +59,7 @@ const APP_SHELL = [
   './css/style.css',
   './js/cloud-save.js',
   './js/account-ui.js',
+  './js/leaderboard.js',
   './js/particles.js',
   './js/skins.js',
   './js/achievements.js',

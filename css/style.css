@@ -835,3 +835,112 @@ html, body {
   color: var(--paper);
   border-color: var(--accent);
 }
+
+/* ---------- Ranking global ----------
+   Mesmo vocabulário do resto do menu: papel, tinta, moldura de 2px.
+   As linhas não são cartões — dez cartões empilhados pesariam a tela;
+   um filete separando cada uma basta, e ainda sobra contraste para
+   destacar a linha de quem está jogando. */
+#menu-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: clamp(6px, 1.6vmin, 12px);
+}
+
+.overlay--ranking {
+  z-index: 3;
+  background: var(--paper);
+  gap: clamp(6px, 1.6vmin, 12px);
+}
+
+.rank-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: min(420px, 92vw);
+  /* Encolhe e rola em vez de empurrar o botão VOLTAR para fora da tela
+     — o celular deitado tem pouca altura. */
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.rank-row {
+  display: grid;
+  /* 3em cabe "10." e "27." sem encostar no nick. */
+  grid-template-columns: 3em 1fr auto;
+  align-items: center;
+  gap: clamp(6px, 1.6vmin, 12px);
+  padding: clamp(4px, 1vmin, 7px) clamp(6px, 1.4vmin, 10px);
+  border-bottom: 1px solid rgba(43, 43, 43, 0.16);
+  font-family: var(--font-display);
+  font-size: clamp(8px, 1.9vmin, 11px);
+  /* #game-frame zera line-height para o próprio layout; sem restaurar
+     aqui o texto fica numa linha de altura zero. */
+  line-height: 1.15;
+  text-align: left;
+}
+
+.rank-row:last-child {
+  border-bottom: none;
+}
+
+.rank-pos {
+  color: var(--muted);
+}
+
+.rank-pos--medal {
+  font-family: var(--font-body);
+  font-size: 1.9em;
+  line-height: 1;
+}
+
+.rank-nick {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rank-score {
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+/* Destaque da própria conta: preenchimento e moldura, sem cor nova. O
+   suficiente para achar a linha de relance, longe de chamativo. Usa
+   box-shadow em vez de border para não mexer na altura da linha. */
+.rank-row--me {
+  background: var(--paper-dim);
+  box-shadow: inset 0 0 0 2px var(--ink);
+  border-radius: 4px;
+}
+
+.rank-me {
+  width: min(420px, 92vw);
+  flex: none;
+  border-top: 2px dashed rgba(43, 43, 43, 0.28);
+  padding-top: clamp(8px, 1.8vmin, 13px);
+}
+
+.rank-me-label {
+  display: block;
+  font-family: var(--font-display);
+  font-size: clamp(7px, 1.5vmin, 9px);
+  letter-spacing: 1px;
+  color: var(--muted);
+  text-align: left;
+  /* Sem isto o line-height:0 do #game-frame corta o cedilha de POSIÇÃO. */
+  line-height: 1.4;
+  padding: 0 clamp(6px, 1.4vmin, 10px) clamp(3px, 0.8vmin, 5px);
+}
+
+.rank-msg {
+  margin: 0;
+  flex: none;
+  font-family: var(--font-body);
+  font-size: clamp(13px, 3vmin, 17px);
+  line-height: 1.2;
+  color: var(--muted);
+  max-width: min(420px, 92vw);
+}

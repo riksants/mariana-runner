@@ -205,6 +205,19 @@ const CloudSave = (() => {
     return { ok: res.ok, status: res.status, data };
   }
 
+  // Chamada de função no banco (RPC). Existe aqui, e não no ranking, para
+  // a URL e a chave do Supabase continuarem em um arquivo só. Com
+  // `auth: true` usa o token da sessão e desiste se não houver sessão —
+  // nada aqui altera o fluxo de save, é só um caminho de leitura a mais.
+  async function rpc(name, args, { auth = false } = {}) {
+    let token = null;
+    if (auth) {
+      token = await ensureFreshToken();
+      if (!token) return { ok: false, status: 0, data: null };
+    }
+    return api(`/rest/v1/rpc/${name}`, { method: 'POST', token, body: args || {} });
+  }
+
   function sessionFromAuth(data, nick) {
     return {
       accessToken: data.access_token,
@@ -385,7 +398,7 @@ const CloudSave = (() => {
   }
 
   return {
-    init, signUp, signIn, signOut, flush,
+    init, signUp, signIn, signOut, flush, rpc,
     state: publicState,
     onChange(fn) { listeners.push(fn); },
     // expostos para teste e para a interface
