@@ -67,6 +67,11 @@ const SPRITE_PATHS = {
   portalSelva: 'assets/sprites/portal_selva.webp',
   portalNeve: 'assets/sprites/portal_neve.webp',
   portalVulcao: 'assets/sprites/portal_vulcao.webp',
+
+  // Final wedding scene, reached only at WEDDING_SCORE_THRESHOLD with the
+  // Mariana Noiva skin equipped (see game.js). Official reference art,
+  // loaded as-is like every other scenery sheet — never redrawn.
+  weddingBg: 'assets/sprites/wedding_bg.png',
 };
 
 (function buildFrameManifest() {

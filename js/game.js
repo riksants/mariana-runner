@@ -435,6 +435,11 @@
   // previous best — a mid-run payoff instead of only at game over.
   let recordBrokenThisRun = false;
 
+  // Wedding ending: fires once per run, the instant score first reaches
+  // WEDDING_SCORE_THRESHOLD while Mariana Noiva is the equipped skin —
+  // see the check in update() and beginWeddingTransition() below.
+  let weddingTriggered = false;
+
   let GIRL_RUN_FRAMES, GIRL_JUMP_FRAMES, GIRL_IDLE_FRAMES;
   let CAT_RUN_FRAMES, CAT_JUMP_FRAMES, CAT_IDLE_FRAMES;
 
@@ -519,6 +524,24 @@
   let pendingBiomeIndex = 0;
   let transitionTimer = 0;
 
+  // Wedding ending — reuses the same short "transition" loading state as
+  // a biome portal (see beginWeddingTransition/updatePortalTransition
+  // below), but lands on the dedicated 'wedding' state instead of
+  // resuming 'playing' in the next biome. pendingWedding just tells
+  // updatePortalTransition() which of the two completions to run once
+  // transitionTimer runs out.
+  const WEDDING_SCORE_THRESHOLD = 42000;
+  const WEDDING_SKIN_ID = 'noiva';
+  // groundFrac is the official art's own floor line (measured where the
+  // paved terrace meets the soil cross-section below it, independently
+  // at several x columns of the source PNG: consistently y≈744 of 941),
+  // as a fraction of the image's full height. drawWeddingScene() uses it
+  // to line up that floor with GROUND_Y — the same line every other
+  // biome's ground sits on — so characters added in a later step stand
+  // on the terrace instead of floating or sinking into it.
+  const WEDDING_ART = { key: 'weddingBg', groundFrac: 744 / 941 };
+  let pendingWedding = false;
+
   function maybeSpawnPortal() {
     if (portal) return;
     const nextCheckpoint = portalsSpawned + 1;
@@ -555,9 +578,27 @@
     setState('transition');
   }
 
+  // Ends the normal race the instant the wedding condition is met (score
+  // + Mariana Noiva equipped, checked in update()). Clears the run's
+  // obstacles/decor/powerups/coins/portal exactly like a biome swap, but
+  // pendingWedding routes the transition to completeWeddingTransition()
+  // instead of the next biome — nothing here re-enables scoring/spawns.
+  function beginWeddingTransition() {
+    pendingWedding = true;
+    transitionTimer = 0;
+    obstacles = [];
+    decor = [];
+    powerups = [];
+    coins = [];
+    portal = null;
+    setState('transition');
+  }
+
   function updatePortalTransition(dt) {
     transitionTimer += dt;
-    if (transitionTimer >= PORTAL_LOADING_DURATION) completeBiomeTransition();
+    if (transitionTimer < PORTAL_LOADING_DURATION) return;
+    if (pendingWedding) completeWeddingTransition();
+    else completeBiomeTransition();
   }
 
   // Score, coins, equipped skin and every save/localStorage value are
@@ -571,6 +612,17 @@
     schedulePowerupSpawn();
     scheduleNextCoinCluster();
     setState('playing');
+  }
+
+  // Lands on the dedicated 'wedding' state instead of resuming 'playing'
+  // — update() no-ops for any state other than 'playing' (its very first
+  // check), so this is the clean stop the run: no more scoring, spawns,
+  // player physics or collisions. No player/groom/pose yet — see
+  // render()'s 'wedding' branch, which for now only draws the official
+  // scenery via drawWeddingScene().
+  function completeWeddingTransition() {
+    pendingWedding = false;
+    setState('wedding');
   }
 
   // Scenery art per biome. Desert keeps its original tiling-silhouette
@@ -1213,6 +1265,8 @@
     coinBonusTimer = 0;
     obstacleStreak = 0;
     recordBrokenThisRun = false;
+    weddingTriggered = false;
+    pendingWedding = false;
     jumpBufferTimer = 0;
     updateStatusBadges();
     scheduleNextSpawn();
@@ -1400,9 +1454,23 @@
     elapsed += dt;
     const speed = currentSpeed();
     score += dt * (speed / 6.5) * scoreMultiplier;
-    maybeSpawnPortal();
 
     const flooredScore = Math.floor(score);
+
+    // Wedding ending gate — both conditions checked live (score threshold
+    // AND the skin equipped right now), weddingTriggered making this a
+    // once-per-run edge rather than a level trigger that could re-fire
+    // every frame the score stays above WEDDING_SCORE_THRESHOLD. Placed
+    // before maybeSpawnPortal() so crossing 42000 never also spawns a
+    // biome portal in the same frame.
+    if (!weddingTriggered && flooredScore >= WEDDING_SCORE_THRESHOLD && SkinStore.getEquipped() === WEDDING_SKIN_ID) {
+      weddingTriggered = true;
+      beginWeddingTransition();
+      return;
+    }
+
+    maybeSpawnPortal();
+
     if (flooredScore >= milestoneFloor + 100) {
       milestoneFloor = Math.floor(flooredScore / 100) * 100;
       if (elapsed - lastMilestoneTime >= MIN_MILESTONE_INTERVAL) {
@@ -1821,6 +1889,28 @@
     drawBiomeGround(biome, gY);
   }
 
+  // Wedding ending scenery — a single full illustration (not a tiling
+  // biome strip), drawn to cover the whole W×H world with its own floor
+  // (WEDDING_ART.groundFrac) lined up on GROUND_Y, the same line every
+  // other biome's ground sits on. Scaled uniformly (never stretched):
+  // first to the width needed to span the world edge-to-edge, then, if
+  // that leaves the image's top short of y=0, scaled up further until it
+  // does — centering crops the sides instead of ever distorting the art.
+  // No player/groom/decor drawn here yet — see render()'s 'wedding'
+  // branch.
+  function drawWeddingScene() {
+    const img = SPRITES[WEDDING_ART.key];
+    const groundFrac = WEDDING_ART.groundFrac;
+    const scaleForWidth = W / img.naturalWidth;
+    const scaleForTop = GROUND_Y / (groundFrac * img.naturalHeight);
+    const scale = Math.max(scaleForWidth, scaleForTop);
+    const drawW = img.naturalWidth * scale;
+    const drawH = img.naturalHeight * scale;
+    const x = (W - drawW) / 2;
+    const y = GROUND_Y - groundFrac * drawH;
+    ctx.drawImage(img, x, y, drawW, drawH);
+  }
+
   function drawDecor() {
     for (const d of decor) {
       const img = SPRITES[d.key];
@@ -1906,11 +1996,17 @@
       drawCat();
       drawPlayer();
     } else if (state === 'transition') {
-      // Atmospheric preview of the NEXT biome only — no player, cat,
-      // obstacles or decor from the old biome linger behind the loading
-      // overlay, and nothing of the new biome's own obstacles/decor
-      // exists yet either (they were cleared in beginBiomeTransition).
-      drawBackground(BIOME_ORDER[pendingBiomeIndex]);
+      // Atmospheric preview behind the loading overlay: the wedding
+      // scenery when this transition is heading there (pendingWedding),
+      // otherwise the next biome as before — no player, cat, obstacles
+      // or decor from the old biome linger, and nothing of the
+      // destination's own obstacles/decor exists yet either (both were
+      // cleared in beginWeddingTransition/beginBiomeTransition).
+      if (pendingWedding) drawWeddingScene();
+      else drawBackground(BIOME_ORDER[pendingBiomeIndex]);
+    } else if (state === 'wedding') {
+      // Scenery only for now — no player/groom/pose until a later step.
+      drawWeddingScene();
     } else {
       drawBackground();
       drawDecor();
