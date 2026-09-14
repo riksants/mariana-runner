@@ -320,8 +320,16 @@ html, body {
    filled buttons, bordered pills, a shadowed title — so nothing needs a
    sheet of paper over the art to stay legible. */
 .overlay--start {
+  /* Largura da coluna central: COMEÇAR, a barra de moedas/recorde e a
+     dupla de botões compartilham a mesma medida, que é o que alinha a
+     pilha inteira como na arte de referência. */
+  --menu-largura: min(clamp(210px, 46vmin, 520px), 88vw);
   background: transparent;
-  gap: clamp(7px, 1.8vmin, 13px);
+  gap: clamp(6px, 1.6vmin, 12px);
+  /* Deixa o cenário respirar embaixo: é onde a Mariana, o gato e o chão
+     aparecem, e é assim que a composição fica na arte de referência. */
+  justify-content: center;
+  padding: clamp(10px, 2.4vmin, 18px) clamp(10px, 2.4vmin, 18px) clamp(38px, 11vmin, 90px);
 }
 
 .title {
@@ -334,12 +342,13 @@ html, body {
 }
 
 .title--game {
-  display: flex;
-  align-items: center;
-  gap: clamp(6px, 1.4vmin, 12px);
-  font-size: clamp(19px, 6.2vmin, 42px);
-  letter-spacing: clamp(1px, 0.4vmin, 3px);
-  text-shadow: 0 3px 0 var(--paper-dim);
+  font-size: clamp(19px, 6.9vmin, 46px);
+  letter-spacing: clamp(1px, 0.5vmin, 4px);
+  line-height: 1.15;
+  /* Sombra impressa dupla: a clara dá o relevo de sempre, a escura
+     garante leitura quando o título calha de cair sobre uma nuvem. */
+  text-shadow: 0 clamp(2px, 0.5vmin, 4px) 0 var(--paper-dim),
+               0 clamp(3px, 0.8vmin, 6px) 0 rgba(43, 43, 43, 0.16);
 }
 
 .title-heart {
@@ -371,41 +380,75 @@ html, body {
   color: var(--accent);
 }
 
+/* Moedas e recorde numa barra só, como na arte de referência: um lado
+   para cada, com um filete no meio. Antes eram duas pílulas empilhadas. */
 #menu-stats {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: clamp(4px, 1vmin, 7px);
-}
-
-.menu-pill {
-  background: rgba(243, 234, 217, 0.9);
-  border: 2px solid var(--ink);
-  border-radius: 4px;
-  padding: clamp(4px, 1vmin, 7px) clamp(10px, 2.4vmin, 16px);
-  /* #game-frame sets line-height:0 for its own layout; without restoring
-     it here the text sits on a zero-height line box and spills over the
-     pill's border. */
+  justify-content: center;
+  gap: clamp(10px, 2.6vmin, 20px);
+  /* Normalmente acompanha a largura da coluna central; cresce só quando
+     um saldo ou recorde muito grande não couber, em vez de cortá-lo. */
+  width: auto;
+  min-width: min(var(--menu-largura), 100%);
+  max-width: 100%;
+  background: rgba(243, 234, 217, 0.92);
+  border: clamp(2px, 0.5vmin, 3px) solid var(--ink);
+  border-radius: 5px;
+  padding: clamp(6px, 1.5vmin, 11px) clamp(12px, 3vmin, 22px);
+  /* #game-frame zera line-height para o próprio layout; sem restaurar
+     aqui o texto fica numa linha de altura zero e vaza a borda. */
   line-height: 1.15;
+  box-shadow: 0 clamp(2px, 0.5vmin, 4px) 0 var(--ink);
 }
 
-#menu-record {
+.menu-stat {
   display: flex;
   align-items: center;
-  gap: clamp(6px, 1.4vmin, 10px);
+  gap: clamp(6px, 1.6vmin, 11px);
   font-family: var(--font-display);
-  font-size: clamp(8px, 1.8vmin, 11px);
-  color: var(--muted);
-  border-color: var(--muted);
-  background: rgba(243, 234, 217, 0.78);
+  font-size: clamp(11px, 2.6vmin, 17px);
+  color: var(--ink);
+  min-width: 0;
+}
+
+.menu-stat--record {
+  text-align: left;
+}
+
+.menu-stat-text {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1px, 0.4vmin, 3px);
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.stat-icon {
+  width: clamp(16px, 3.8vmin, 26px);
+  height: clamp(16px, 3.8vmin, 26px);
+  flex: none;
+}
+
+.stat-icon--crown {
+  fill: #d9a441;
+  stroke: var(--ink);
+  stroke-width: 1.1;
+  stroke-linejoin: round;
+}
+
+.menu-divider {
+  width: 2px;
+  align-self: stretch;
+  background: var(--ink);
+  opacity: 0.28;
+  flex: none;
 }
 
 .menu-pill-label {
   letter-spacing: 1px;
-}
-
-#menu-record-value {
-  color: var(--ink);
+  font-size: clamp(7px, 1.6vmin, 10px);
+  color: var(--muted);
 }
 
 .title--small {
@@ -481,11 +524,35 @@ html, body {
 .pixel-btn--hero {
   display: flex;
   align-items: center;
-  gap: clamp(8px, 1.8vmin, 14px);
-  font-size: clamp(12px, 3.2vmin, 19px);
-  letter-spacing: clamp(1px, 0.4vmin, 3px);
-  padding: clamp(11px, 2.4vmin, 17px) clamp(24px, 5.6vmin, 42px);
-  box-shadow: 0 5px 0 var(--ink);
+  justify-content: center;
+  gap: clamp(8px, 1.8vmin, 16px);
+  width: var(--menu-largura);
+  font-size: clamp(13px, 3.6vmin, 23px);
+  letter-spacing: clamp(1px, 0.5vmin, 4px);
+  padding: clamp(13px, 3vmin, 22px) clamp(12px, 3vmin, 22px);
+  box-shadow: 0 clamp(4px, 1vmin, 7px) 0 var(--ink);
+}
+
+/* Marquinhas laterais do COMEÇAR — só enfeite, na linha do botão. */
+.hero-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(5px, 1.4vmin, 11px);
+  max-width: 100%;
+}
+
+.hero-spark {
+  width: clamp(16px, 4vmin, 30px);
+  height: clamp(16px, 4vmin, 30px);
+  flex: none;
+  color: var(--ink);
+  opacity: 0.5;
+  transform: scaleX(-1);
+}
+
+.hero-spark--dir {
+  transform: none;
 }
 
 .btn-glyph {
@@ -618,27 +685,76 @@ html, body {
 /* ---------- Conta (entrar / criar conta) ----------
    Reaproveita .overlay e .pixel-btn; só os campos de formulário e o
    botão-link são novos. */
+/* Caixa da conta no canto superior direito, fora do miolo da tela. Sai
+   do fluxo para não empurrar a pilha central, e continua dentro da
+   overlay de início para sumir sozinha durante a partida. */
 #account-strip {
+  position: absolute;
+  top: clamp(8px, 2vmin, 16px);
+  right: clamp(8px, 2vmin, 16px);
   display: flex;
   align-items: center;
   gap: clamp(6px, 1.4vmin, 10px);
-  min-height: 1.2em;
+  max-width: calc(100% - clamp(80px, 16vmin, 130px));
+  background: rgba(243, 234, 217, 0.92);
+  border: clamp(2px, 0.45vmin, 3px) solid var(--ink);
+  border-radius: 5px;
+  padding: clamp(5px, 1.2vmin, 9px) clamp(8px, 2vmin, 14px);
+  line-height: 1.15;
 }
 
 #account-signed {
   display: flex;
   align-items: center;
-  gap: clamp(6px, 1.4vmin, 10px);
+  gap: clamp(5px, 1.2vmin, 9px);
+  min-width: 0;
+}
+
+.account-icon {
+  width: clamp(12px, 2.6vmin, 18px);
+  height: clamp(12px, 2.6vmin, 18px);
+  flex: none;
+  color: var(--ink);
+}
+
+.account-sep {
+  width: 2px;
+  align-self: stretch;
+  background: var(--ink);
+  opacity: 0.28;
+  flex: none;
+}
+
+/* Placa de madeira no canto inferior direito. Puramente decorativa: não
+   recebe clique, não entra na navegação e não tem função nenhuma. */
+/* Ancorada na base da tela: o chão do jogo sempre chega até lá, em
+   qualquer proporção, então a placa lê como plantada no cenário sem
+   precisar consultar a posição do chão no canvas. */
+.start-sign {
+  position: absolute;
+  right: clamp(14px, 5vmin, 70px);
+  bottom: clamp(8px, 4vmin, 30px);
+  width: clamp(34px, 8vmin, 70px);
+  height: auto;
+  pointer-events: none;
+  shape-rendering: crispEdges;
+}
+
+/* Telas curtas e deitadas não têm altura para a placa sem ela encostar
+   nos botões; some em vez de brigar por espaço. */
+@media (max-height: 420px) {
+  .start-sign { display: none; }
 }
 
 #account-nick {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-family: var(--font-display);
   font-size: clamp(8px, 1.8vmin, 11px);
   color: var(--ink);
-  background: rgba(243, 234, 217, 0.78);
-  border: 2px solid var(--muted);
-  border-radius: 4px;
-  padding: clamp(3px, 0.8vmin, 6px) clamp(8px, 2vmin, 13px);
+  /* Sem moldura própria: quem emoldura agora é a caixa da conta inteira,
+     e duas bordas aninhadas ficavam pesadas. */
   line-height: 1.15;
 }
 
@@ -847,11 +963,42 @@ html, body {
    --u é limitado pela largura E pela altura: em paisagem manda a
    largura (é ela que fica apertada numa tela 2:1), em retrato manda a
    altura. O piso de 2.6px evita texto ilegível em telas minúsculas. */
+/* Os dois botões dividem exatamente a mesma largura da coluna central,
+   metade para cada um: mesma altura, mesmo estilo, alinhados. */
 #menu-buttons {
   display: flex;
-  flex-wrap: wrap;
   justify-content: center;
+  align-items: stretch;
   gap: clamp(6px, 1.6vmin, 12px);
+  /* Cada botão ocupa o que o próprio rótulo pede — dividir a linha em
+     metades exatas cortava "GUARDA-ROUPA". A altura continua igual nos
+     dois por causa do align-items: stretch. */
+  width: auto;
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+
+#menu-buttons .pixel-btn {
+  flex: 0 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(4px, 1.2vmin, 9px);
+  padding-inline: clamp(6px, 1.6vmin, 14px);
+}
+
+#menu-buttons .pixel-btn span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn-icon {
+  width: clamp(12px, 2.8vmin, 18px);
+  height: clamp(12px, 2.8vmin, 18px);
+  flex: none;
+  fill: currentColor;
 }
 
 .overlay--ranking {
