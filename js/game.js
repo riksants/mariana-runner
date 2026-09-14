@@ -45,6 +45,7 @@
     pause: document.getElementById('overlay-pause'),
     gameover: document.getElementById('overlay-gameover'),
     transition: document.getElementById('overlay-transition'),
+    weddingEnd: document.getElementById('overlay-wedding-end'),
   };
   const overlayWardrobe = document.getElementById('overlay-wardrobe');
   const wardrobeGrid = document.getElementById('wardrobe-grid');
@@ -56,10 +57,12 @@
   const btnWardrobeBack = document.getElementById('btn-wardrobe-back');
   const btnStart = document.getElementById('btn-start');
   const btnRestart = document.getElementById('btn-restart');
+  const btnWeddingRestart = document.getElementById('btn-wedding-restart');
   const btnResume = document.getElementById('btn-resume');
   const btnPause = document.getElementById('btn-pause');
   const btnMute = document.getElementById('btn-mute');
   const finalScoreEl = document.getElementById('final-score');
+  const weddingEndScoreEl = document.getElementById('wedding-end-score');
   const recordBadge = document.getElementById('record-badge');
   const loadingDots = document.getElementById('loading-dots');
 
@@ -438,6 +441,8 @@
   let GIRL_RUN_FRAMES, GIRL_JUMP_FRAMES, GIRL_IDLE_FRAMES;
   let CAT_RUN_FRAMES, CAT_JUMP_FRAMES, CAT_IDLE_FRAMES;
   let WEDDING_DECEL_FRAMES, WEDDING_WALK_FRAMES, WEDDING_STOP_FRAMES, WEDDING_KISS_IDLE_FRAMES;
+  let WEDDING_GROOM_IDLE_FRAMES, WEDDING_KISS_LEFT_FRAMES, WEDDING_KISS_RIGHT_FRAMES;
+  let WEDDING_KISS_FOREHEAD_FRAMES, WEDDING_KISS_LIPS_FRAMES, WEDDING_FINAL_FRAMES;
 
   function resetPlayerY() { player.y = GROUND_Y; }
 
@@ -546,14 +551,34 @@
   let pendingWedding = false;
 
   // Mariana's walk-to-the-altar sequence, played once the wedding scenery
-  // has loaded (state 'wedding'). Four phases, always in this order, each
-  // advancing on its own timer — never on score or input:
+  // has loaded (state 'wedding'), continuing straight on into the groom
+  // + four kisses + final pose added in this step. Always in this exact
+  // order, each phase advancing on its own timer — never on score or
+  // input:
   //   decelerate (in place) -> walk (moves left to right) -> stop (in
-  //   place) -> idle (loops, waiting for the next step: the groom/kiss).
-  // Frame counts match scripts/extract_wedding_walk_frames.py's output.
-  const WEDDING_WALK_PHASES = ['decelerate', 'walk', 'stop', 'idle'];
-  const WEDDING_PHASE_FRAME_COUNT = { decelerate: 8, walk: 8, stop: 6, idle: 3 };
-  const WEDDING_PHASE_FRAME_DURATION = { decelerate: 0.07, walk: 0.09, stop: 0.08, idle: 0.45 };
+  //   place) -> idle (brief pause) -> kissLeft -> kissRight ->
+  //   kissForehead -> kissLips -> finalTogether (holds, then hands off
+  //   to state 'weddingEnd' — see completeWeddingScene()).
+  // The first four are solo Mariana frames positioned by weddingCharX;
+  // the kiss/final frames are each a single pre-composed two-character
+  // image (see WEDDING_SOLO_PHASES below) positioned off the groom's
+  // fixed spot instead. Frame counts match
+  // scripts/extract_wedding_walk_frames.py / extract_wedding_kiss_frames.py's
+  // output.
+  const WEDDING_WALK_PHASES = [
+    'decelerate', 'walk', 'stop', 'idle',
+    'kissLeft', 'kissRight', 'kissForehead', 'kissLips', 'finalTogether',
+  ];
+  const WEDDING_SOLO_PHASES = new Set(['decelerate', 'walk', 'stop', 'idle']);
+  const WEDDING_KISS_PHASES = new Set(['kissLeft', 'kissRight', 'kissForehead', 'kissLips']);
+  const WEDDING_PHASE_FRAME_COUNT = {
+    decelerate: 8, walk: 8, stop: 6, idle: 3,
+    kissLeft: 4, kissRight: 4, kissForehead: 4, kissLips: 4, finalTogether: 4,
+  };
+  const WEDDING_PHASE_FRAME_DURATION = {
+    decelerate: 0.07, walk: 0.09, stop: 0.08, idle: 0.45,
+    kissLeft: 0.15, kissRight: 0.15, kissForehead: 0.15, kissLips: 0.15, finalTogether: 0.15,
+  };
   // Walk phase is time-based, not speed-based: a fixed duration means the
   // pace reads the same "calm, deliberate" way regardless of how far she
   // actually has to travel on a given aspect ratio (a wide desktop window
@@ -562,13 +587,26 @@
   // rather than the reverse). Eased (see updateWeddingScene) so the stop
   // reads as arriving, not stopping dead.
   const WEDDING_WALK_DURATION = 2.4;
+  // idle is a brief held beat (not the old "wait forever for a later
+  // step" — that later step is this one), long enough to read as a
+  // breath before the first kiss, never a hard cut from walking.
+  const WEDDING_IDLE_HOLD_DURATION = 1.5;
+  // finalTogether plays its 4 frames once, then holds on the last one
+  // for a bit longer before handing off to state 'weddingEnd' — "mantenha
+  // o último estado/pose por um pequeno momento antes da próxima tela."
+  const WEDDING_FINAL_HOLD_EXTRA = 1.4;
   // Fraction of the wedding artwork's own width where she comes to a
   // stop — just before the red-carpet steps (which start ~0.71 of the
   // image width, measured directly on wedding_bg.png), leaving the
-  // carpet and archway (up to ~0.90) clear for the groom in a later
-  // step. Converted to world-X via weddingSceneTransform() every frame,
-  // so it stays visually anchored to that landmark across resizes.
+  // carpet and archway (up to ~0.90) clear for the groom. Converted to
+  // world-X via weddingSceneTransform() every frame, so it stays
+  // visually anchored to that landmark across resizes.
   const WEDDING_STOP_X_FRAC = 0.66;
+  // Groom's fixed spot — between the carpet and the archway, i.e.
+  // further right than where Mariana stops, so there's a visible gap
+  // between them to close. Same live conversion as WEDDING_STOP_X_FRAC.
+  const WEDDING_GROOM_X_FRAC = 0.80;
+  const GROOM_IDLE_FRAME_DURATION = 0.5;
   let weddingPhase = null;
   let weddingPhaseIndex = 0;
   let weddingPhaseTimer = 0;
@@ -576,6 +614,8 @@
   let weddingAnimTimer = 0;
   let weddingCharX = PLAYER_RIGHT_X;
   let weddingWalkFromX = PLAYER_RIGHT_X;
+  let groomAnimFrame = 0;
+  let groomAnimTimer = 0;
 
   function maybeSpawnPortal() {
     if (portal) return;
@@ -680,7 +720,18 @@
     weddingAnimTimer = 0;
     weddingWalkFromX = PLAYER_RIGHT_X;
     weddingCharX = PLAYER_RIGHT_X;
+    groomAnimFrame = 0;
+    groomAnimTimer = 0;
     setState('wedding');
+  }
+
+  // Ends the special scene the instant finalTogether's hold elapses —
+  // called exactly once, from updateWeddingScene(), never re-entered
+  // because state stops being 'wedding' the moment this runs (loop()
+  // only calls updateWeddingScene while state === 'wedding').
+  function completeWeddingScene() {
+    weddingEndScoreEl.textContent = String(WEDDING_SCORE_THRESHOLD);
+    setState('weddingEnd');
   }
 
   function easeOutQuad(t) {
@@ -693,6 +744,16 @@
   // is what keeps this cinematic beat from being nudged by anything the
   // normal endless-runner update() does (that function already no-ops
   // for any state other than 'playing', so it's not even running).
+  // One small, discreet heart per kiss (never more) — the exact same
+  // sparkle primitive/shape already used elsewhere in the game
+  // (Particles.sparkle with shape:'heart'), just placed once, at the
+  // instant a kiss phase begins, above the couple's heads.
+  function spawnKissHeart() {
+    const hx = weddingGroomWorldX() - currentGirlH() * 0.35;
+    const hy = GROUND_Y - currentGirlH() * 0.95;
+    Particles.sparkle(hx, hy, { color: '#c0392f', shape: 'heart', size: 13, spread: 6 });
+  }
+
   function updateWeddingScene(dt) {
     if (!weddingPhase) return;
     weddingPhaseTimer += dt;
@@ -704,6 +765,10 @@
       weddingAnimTimer -= frameDuration;
       weddingAnimFrame = weddingPhase === 'idle'
         ? (weddingAnimFrame + 1) % frameCount
+        // Every other phase — including each kiss and the final pose —
+        // plays its frames once and holds on the last one: a kiss is a
+        // single beat (approach -> contact -> hold -> release), never a
+        // loop, and the same is true of decelerate/walk/stop already.
         : Math.min(frameCount - 1, weddingAnimFrame + 1);
     }
 
@@ -714,23 +779,42 @@
       weddingCharX = weddingWalkFromX + (targetX - weddingWalkFromX) * easeOutQuad(progress);
     }
 
-    const phaseDuration = weddingPhase === 'idle' ? Infinity
-      : weddingPhase === 'walk' ? WEDDING_WALK_DURATION
-      : frameCount * frameDuration;
-    if (weddingPhaseTimer >= phaseDuration) {
-      weddingPhaseIndex = Math.min(WEDDING_WALK_PHASES.length - 1, weddingPhaseIndex + 1);
-      weddingPhase = WEDDING_WALK_PHASES[weddingPhaseIndex];
-      weddingPhaseTimer = 0;
-      weddingAnimFrame = 0;
-      weddingAnimTimer = 0;
-      if (weddingPhase === 'stop') {
-        // Snap exactly onto the mark in case of any float drift from the
-        // eased walk above, so PARANDO always starts from the same spot
-        // stop-frame 1 was drawn at, never a sub-pixel short/long of it.
-        const t = weddingSceneTransform();
-        weddingCharX = t.x + WEDDING_STOP_X_FRAC * t.drawW;
+    if (WEDDING_SOLO_PHASES.has(weddingPhase)) {
+      groomAnimTimer += dt;
+      if (groomAnimTimer >= GROOM_IDLE_FRAME_DURATION) {
+        groomAnimTimer -= GROOM_IDLE_FRAME_DURATION;
+        groomAnimFrame = (groomAnimFrame + 1) % WEDDING_GROOM_IDLE_FRAMES.length;
       }
     }
+
+    const phaseDuration = weddingPhase === 'idle' ? WEDDING_IDLE_HOLD_DURATION
+      : weddingPhase === 'walk' ? WEDDING_WALK_DURATION
+      : weddingPhase === 'finalTogether' ? frameCount * frameDuration + WEDDING_FINAL_HOLD_EXTRA
+      : frameCount * frameDuration;
+    if (weddingPhaseTimer < phaseDuration) return;
+
+    const isLastPhase = weddingPhaseIndex >= WEDDING_WALK_PHASES.length - 1;
+    if (isLastPhase) {
+      // finalTogether's hold just ran out — the whole special scene
+      // ends here, once, since loop() stops calling this function the
+      // instant state stops being 'wedding'.
+      completeWeddingScene();
+      return;
+    }
+
+    weddingPhaseIndex += 1;
+    weddingPhase = WEDDING_WALK_PHASES[weddingPhaseIndex];
+    weddingPhaseTimer = 0;
+    weddingAnimFrame = 0;
+    weddingAnimTimer = 0;
+    if (weddingPhase === 'stop') {
+      // Snap exactly onto the mark in case of any float drift from the
+      // eased walk above, so PARANDO always starts from the same spot
+      // stop-frame 1 was drawn at, never a sub-pixel short/long of it.
+      const t = weddingSceneTransform();
+      weddingCharX = t.x + WEDDING_STOP_X_FRAC * t.drawW;
+    }
+    if (WEDDING_KISS_PHASES.has(weddingPhase)) spawnKissHeart();
   }
 
   // Scenery art per biome. Desert keeps its original tiling-silhouette
@@ -1207,6 +1291,7 @@
     overlays.pause.hidden = next !== 'paused';
     overlays.gameover.hidden = next !== 'gameover';
     overlays.transition.hidden = next !== 'transition';
+    overlays.weddingEnd.hidden = next !== 'weddingEnd';
     btnPause.hidden = !(next === 'playing' || next === 'paused');
     btnPause.setAttribute('aria-label', next === 'paused' ? 'Continuar' : 'Pausar');
     btnPause.querySelector('.icon-pause').hidden = next === 'paused';
@@ -1248,7 +1333,7 @@
   }
 
   function tryJump() {
-    if (state === 'start' || state === 'gameover') {
+    if (state === 'start' || state === 'gameover' || state === 'weddingEnd') {
       startGame();
       return;
     }
@@ -1327,9 +1412,10 @@
   }
   wireOverlayAction(overlays.start, () => startGame());
   wireOverlayAction(overlays.gameover, () => startGame());
+  wireOverlayAction(overlays.weddingEnd, () => startGame());
   wireOverlayAction(overlays.pause, () => { if (state === 'paused') togglePause(); });
 
-  [btnStart, btnRestart, btnResume].forEach((btn) => {
+  [btnStart, btnRestart, btnWeddingRestart, btnResume].forEach((btn) => {
     btn.addEventListener('mouseenter', () => AudioMgr.uiHover());
   });
 
@@ -2013,6 +2099,14 @@
     return { img, x, y, drawW, drawH };
   }
 
+  // Groom's fixed world-X, converted from WEDDING_GROOM_X_FRAC the same
+  // live way as Mariana's WEDDING_STOP_X_FRAC target — recomputed every
+  // call (never cached) so it stays correct across a resize.
+  function weddingGroomWorldX() {
+    const t = weddingSceneTransform();
+    return t.x + WEDDING_GROOM_X_FRAC * t.drawW;
+  }
+
   // Wedding ending scenery — a single full illustration (not a tiling
   // biome strip), drawn to cover the whole W×H world with its own floor
   // (WEDDING_ART.groundFrac) lined up on GROUND_Y, the same line every
@@ -2030,17 +2124,43 @@
     get walk() { return WEDDING_WALK_FRAMES; },
     get stop() { return WEDDING_STOP_FRAMES; },
     get idle() { return WEDDING_KISS_IDLE_FRAMES; },
+    get kissLeft() { return WEDDING_KISS_LEFT_FRAMES; },
+    get kissRight() { return WEDDING_KISS_RIGHT_FRAMES; },
+    get kissForehead() { return WEDDING_KISS_FOREHEAD_FRAMES; },
+    get kissLips() { return WEDDING_KISS_LIPS_FRAMES; },
+    get finalTogether() { return WEDDING_FINAL_FRAMES; },
   };
 
   // Same bottom-right anchor convention as drawPlayer() (drawSpriteRB,
   // weddingCharX standing in for PLAYER_RIGHT_X) and the same GROUND_Y
   // ground line as everything else in the game — she can only ever look
   // planted on the terrace or floating above it, never something in
-  // between, by construction. No groom/kiss/pose yet — see updateWeddingScene().
+  // between, by construction. Solo phases only (WEDDING_SOLO_PHASES) —
+  // the kiss/final phases draw a single pre-composed couple frame
+  // instead (see drawWeddingCouple()).
   function drawWeddingCharacter() {
     if (!weddingPhase) return;
     const img = WEDDING_PHASE_FRAMES[weddingPhase][weddingAnimFrame];
     drawSpriteRB(ctx, img, weddingCharX, GROUND_Y, currentGirlH());
+  }
+
+  // Groom waiting at his fixed spot, idling in place — visible through
+  // decelerate/walk/stop/idle, i.e. WEDDING_SOLO_PHASES (see
+  // updateWeddingScene, which only advances groomAnimFrame then). Once
+  // a kiss phase starts he's part of the composed frame drawn by
+  // drawWeddingCouple() instead, never drawn separately again.
+  function drawGroomIdle() {
+    const img = WEDDING_GROOM_IDLE_FRAMES[groomAnimFrame];
+    drawSpriteRB(ctx, img, weddingGroomWorldX(), GROUND_Y, currentGirlH());
+  }
+
+  // Each kiss/final frame already has both Mariana and the groom drawn
+  // together by the artist — positioned as one sprite, anchored off the
+  // groom's fixed spot (he doesn't move for the rest of the scene; she
+  // already walked up to him, so his anchor is the stable one to keep).
+  function drawWeddingCouple() {
+    const img = WEDDING_PHASE_FRAMES[weddingPhase][weddingAnimFrame];
+    drawSpriteRB(ctx, img, weddingGroomWorldX(), GROUND_Y, currentGirlH());
   }
 
   function drawDecor() {
@@ -2136,11 +2256,20 @@
       // cleared in beginWeddingTransition/beginBiomeTransition).
       if (pendingWedding) drawWeddingScene();
       else drawBackground(BIOME_ORDER[pendingBiomeIndex]);
-    } else if (state === 'wedding') {
-      // Mariana's decelerate/walk/stop/idle sequence — see
-      // updateWeddingScene(). No groom/kiss/pose yet.
+    } else if (state === 'wedding' || state === 'weddingEnd') {
+      // Mariana's decelerate/walk/stop/idle/kisses/final sequence — see
+      // updateWeddingScene(). 'weddingEnd' keeps rendering this same
+      // frozen tableau behind the completion card (update() stopped
+      // being called the moment state left 'wedding', so weddingPhase
+      // stays on finalTogether's last frame — nothing to redraw
+      // differently here).
       drawWeddingScene();
-      drawWeddingCharacter();
+      if (WEDDING_SOLO_PHASES.has(weddingPhase)) {
+        drawGroomIdle();
+        drawWeddingCharacter();
+      } else if (weddingPhase) {
+        drawWeddingCouple();
+      }
     } else {
       drawBackground();
       drawDecor();
@@ -2216,6 +2345,12 @@
     WEDDING_WALK_FRAMES = framesFromPrefix('weddingWalk', 8);
     WEDDING_STOP_FRAMES = framesFromPrefix('weddingStop', 6);
     WEDDING_KISS_IDLE_FRAMES = framesFromPrefix('weddingKissIdle', 3);
+    WEDDING_GROOM_IDLE_FRAMES = framesFromPrefix('weddingGroomIdle', 4);
+    WEDDING_KISS_LEFT_FRAMES = framesFromPrefix('weddingKissLeft', 4);
+    WEDDING_KISS_RIGHT_FRAMES = framesFromPrefix('weddingKissRight', 4);
+    WEDDING_KISS_FOREHEAD_FRAMES = framesFromPrefix('weddingKissForehead', 4);
+    WEDDING_KISS_LIPS_FRAMES = framesFromPrefix('weddingKissLips', 4);
+    WEDDING_FINAL_FRAMES = framesFromPrefix('weddingFinal', 4);
 
     initBackground();
     resetPlayerY();

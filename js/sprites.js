@@ -104,8 +104,24 @@ const SPRITE_PATHS = {
   // gameplay frames above — used only once state 'wedding' is reached
   // (see game.js). Sliced from assets/skins/mariana_noiva_wedding.png
   // by scripts/extract_wedding_walk_frames.py.
-  const weddingCounts = { weddingDecel: 8, weddingWalk: 8, weddingStop: 6, weddingKissIdle: 3 };
-  const weddingFilePrefix = { weddingDecel: 'wedding_decelerate', weddingWalk: 'wedding_walk', weddingStop: 'wedding_stop', weddingKissIdle: 'wedding_idle' };
+  //
+  // The groom's own idle + the four kiss beats + the final together
+  // pose continue straight on in the same table: one solo-groom set
+  // (weddingGroomIdle) and four two-character composite sets (each
+  // frame already has both Mariana and the groom drawn together, so
+  // game.js draws these as a single sprite rather than positioning two
+  // separately) — sliced from assets/skins/mariana_wedding_kiss_scene.png
+  // by scripts/extract_wedding_kiss_frames.py.
+  const weddingCounts = {
+    weddingDecel: 8, weddingWalk: 8, weddingStop: 6, weddingKissIdle: 3,
+    weddingGroomIdle: 4, weddingKissLeft: 4, weddingKissRight: 4,
+    weddingKissForehead: 4, weddingKissLips: 4, weddingFinal: 4,
+  };
+  const weddingFilePrefix = {
+    weddingDecel: 'wedding_decelerate', weddingWalk: 'wedding_walk', weddingStop: 'wedding_stop', weddingKissIdle: 'wedding_idle',
+    weddingGroomIdle: 'wedding_groom_idle', weddingKissLeft: 'wedding_kiss_left', weddingKissRight: 'wedding_kiss_right',
+    weddingKissForehead: 'wedding_kiss_forehead', weddingKissLips: 'wedding_kiss_lips', weddingFinal: 'wedding_final',
+  };
   for (const key of Object.keys(weddingCounts)) {
     for (let i = 1; i <= weddingCounts[key]; i++) {
       const n = String(i).padStart(2, '0');

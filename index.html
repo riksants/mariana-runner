@@ -157,6 +157,20 @@
         <p class="instruction">ESPAÇO PARA REINICIAR</p>
       </div>
 
+      <!-- Wedding-ending completion card. Same overlay/title/score-line/
+           pixel-btn/instruction components as GAME OVER above — this
+           screen is meant to read as "always part of Mariana Runner",
+           not a bolted-on wedding-card design. -->
+      <div id="overlay-wedding-end" class="overlay" hidden>
+        <h2 class="title title--small">MARIANA SE CASOU!</h2>
+        <div class="title-rule" aria-hidden="true">
+          <svg class="title-rule-heart" viewBox="0 0 24 24"><path d="M12 20.5S3.8 15.4 3.8 9.9c0-2.6 2-4.4 4.3-4.4 1.7 0 3.1 1 3.9 2.3.8-1.3 2.2-2.3 3.9-2.3 2.3 0 4.3 1.8 4.3 4.4 0 5.5-8.2 10.6-8.2 10.6z" fill="currentColor"/></svg>
+        </div>
+        <p class="score-line">Pontuação: <span id="wedding-end-score">42000</span></p>
+        <button type="button" id="btn-wedding-restart" class="pixel-btn pixel-btn--primary">JOGAR NOVAMENTE</button>
+        <p class="instruction">ESPAÇO PARA REINICIAR</p>
+      </div>
+
       <div id="overlay-pause" class="overlay" hidden>
         <h2 class="title title--small">PAUSADO</h2>
         <button type="button" id="btn-resume" class="pixel-btn pixel-btn--primary">CONTINUAR</button>

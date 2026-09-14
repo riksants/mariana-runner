@@ -30,6 +30,32 @@ y-crop (never a per-frame tight crop) so the ground line lands on the
 same pixel row across a phase, which is what keeps `drawSpriteRB`'s
 fixed-height scaling from making the feet jitter frame to frame.
 
+Continuing straight on from that walk cycle, `noiva/` also holds the
+groom-waiting + four-kisses + final-pose set: `wedding_groom_idle_01..04.png`
+(solo groom, drawn separately), and four **two-character** sets —
+`wedding_kiss_left_01..04.png`, `wedding_kiss_right_01..04.png`,
+`wedding_kiss_forehead_01..04.png`, `wedding_kiss_lips_01..04.png` — plus
+`wedding_final_01..04.png`. Each frame in those five couple sets already
+has both Mariana and the groom drawn together by the artist as one
+image; `js/game.js` draws them as a single sprite (see
+`drawWeddingCouple()`), never repositions the two characters separately.
+Sliced from `assets/skins/mariana_wedding_kiss_scene.png` by
+`scripts/extract_wedding_kiss_frames.py` (2026-09-14). This sheet's
+poses touch/overlap at the pixel level within a row (unlike the walk
+sheet above), so plain zero-gap detection doesn't find frame
+boundaries reliably — the script instead finds the deep-but-nonzero
+density troughs between poses and cuts at the midpoint of each,
+keeping every low-density pixel on either side (so a hand or a trailing
+sleeve is never lost) rather than bounding the crop by the trough
+itself. Two extra defects that showed up only on this sheet, both
+fixed in `save_frame()`: a number label sitting close enough to
+overlap a pose's own row range (labels are masked out of the saved
+pixels directly via the same short-component mask used for detection,
+not just excluded from band detection) and a sliver of a neighboring
+pose bleeding across a cut point (dropped via the same
+touches-the-crop's-own-edge rule `extract_skin_frames_alpha.py`'s
+`save_frame_clean` already uses).
+
 All 30 folders here already follow this exact convention, sliced from
 the user-supplied reference sheets in `assets/skins/mariana_*.png`
 (kept there as the source) — if another skin needs slicing from a
