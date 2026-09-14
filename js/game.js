@@ -437,6 +437,7 @@
 
   let GIRL_RUN_FRAMES, GIRL_JUMP_FRAMES, GIRL_IDLE_FRAMES;
   let CAT_RUN_FRAMES, CAT_JUMP_FRAMES, CAT_IDLE_FRAMES;
+  let WEDDING_DECEL_FRAMES, WEDDING_WALK_FRAMES, WEDDING_STOP_FRAMES, WEDDING_KISS_IDLE_FRAMES;
 
   function resetPlayerY() { player.y = GROUND_Y; }
 
@@ -544,6 +545,38 @@
   const WEDDING_PORTAL_ART = { key: 'portalWedding', left: 0.1823, top: 0.0158, right: 0.9476, bottom: 0.9472 };
   let pendingWedding = false;
 
+  // Mariana's walk-to-the-altar sequence, played once the wedding scenery
+  // has loaded (state 'wedding'). Four phases, always in this order, each
+  // advancing on its own timer — never on score or input:
+  //   decelerate (in place) -> walk (moves left to right) -> stop (in
+  //   place) -> idle (loops, waiting for the next step: the groom/kiss).
+  // Frame counts match scripts/extract_wedding_walk_frames.py's output.
+  const WEDDING_WALK_PHASES = ['decelerate', 'walk', 'stop', 'idle'];
+  const WEDDING_PHASE_FRAME_COUNT = { decelerate: 8, walk: 8, stop: 6, idle: 3 };
+  const WEDDING_PHASE_FRAME_DURATION = { decelerate: 0.07, walk: 0.09, stop: 0.08, idle: 0.45 };
+  // Walk phase is time-based, not speed-based: a fixed duration means the
+  // pace reads the same "calm, deliberate" way regardless of how far she
+  // actually has to travel on a given aspect ratio (a wide desktop window
+  // crops the wedding art less, so the altar landmark below sits farther
+  // in world-X than on a narrow phone — same walk TIME, different speed,
+  // rather than the reverse). Eased (see updateWeddingScene) so the stop
+  // reads as arriving, not stopping dead.
+  const WEDDING_WALK_DURATION = 2.4;
+  // Fraction of the wedding artwork's own width where she comes to a
+  // stop — just before the red-carpet steps (which start ~0.71 of the
+  // image width, measured directly on wedding_bg.png), leaving the
+  // carpet and archway (up to ~0.90) clear for the groom in a later
+  // step. Converted to world-X via weddingSceneTransform() every frame,
+  // so it stays visually anchored to that landmark across resizes.
+  const WEDDING_STOP_X_FRAC = 0.66;
+  let weddingPhase = null;
+  let weddingPhaseIndex = 0;
+  let weddingPhaseTimer = 0;
+  let weddingAnimFrame = 0;
+  let weddingAnimTimer = 0;
+  let weddingCharX = PLAYER_RIGHT_X;
+  let weddingWalkFromX = PLAYER_RIGHT_X;
+
   function maybeSpawnPortal() {
     if (portal) return;
     const nextCheckpoint = portalsSpawned + 1;
@@ -634,7 +667,70 @@
   // scenery via drawWeddingScene().
   function completeWeddingTransition() {
     pendingWedding = false;
+    // Score stays visibly pinned at the threshold through the whole
+    // special scene (it was already >= 42000 the instant the portal
+    // spawned, but kept climbing for the second or two it took to walk
+    // into it) — nothing reads `score` again until endGame()/a future
+    // run, so this is purely the "stays at 42000" contract from the spec.
+    score = WEDDING_SCORE_THRESHOLD;
+    weddingPhase = WEDDING_WALK_PHASES[0];
+    weddingPhaseIndex = 0;
+    weddingPhaseTimer = 0;
+    weddingAnimFrame = 0;
+    weddingAnimTimer = 0;
+    weddingWalkFromX = PLAYER_RIGHT_X;
+    weddingCharX = PLAYER_RIGHT_X;
     setState('wedding');
+  }
+
+  function easeOutQuad(t) {
+    return 1 - (1 - t) * (1 - t);
+  }
+
+  // Drives the decelerate -> walk -> stop -> idle sequence while
+  // state === 'wedding' (see loop() below) — entirely its own timer- and
+  // phase-driven state, never touching score/spawns/physics/input, which
+  // is what keeps this cinematic beat from being nudged by anything the
+  // normal endless-runner update() does (that function already no-ops
+  // for any state other than 'playing', so it's not even running).
+  function updateWeddingScene(dt) {
+    if (!weddingPhase) return;
+    weddingPhaseTimer += dt;
+    weddingAnimTimer += dt;
+
+    const frameCount = WEDDING_PHASE_FRAME_COUNT[weddingPhase];
+    const frameDuration = WEDDING_PHASE_FRAME_DURATION[weddingPhase];
+    if (weddingAnimTimer >= frameDuration) {
+      weddingAnimTimer -= frameDuration;
+      weddingAnimFrame = weddingPhase === 'idle'
+        ? (weddingAnimFrame + 1) % frameCount
+        : Math.min(frameCount - 1, weddingAnimFrame + 1);
+    }
+
+    if (weddingPhase === 'walk') {
+      const t = weddingSceneTransform();
+      const targetX = t.x + WEDDING_STOP_X_FRAC * t.drawW;
+      const progress = Math.min(1, weddingPhaseTimer / WEDDING_WALK_DURATION);
+      weddingCharX = weddingWalkFromX + (targetX - weddingWalkFromX) * easeOutQuad(progress);
+    }
+
+    const phaseDuration = weddingPhase === 'idle' ? Infinity
+      : weddingPhase === 'walk' ? WEDDING_WALK_DURATION
+      : frameCount * frameDuration;
+    if (weddingPhaseTimer >= phaseDuration) {
+      weddingPhaseIndex = Math.min(WEDDING_WALK_PHASES.length - 1, weddingPhaseIndex + 1);
+      weddingPhase = WEDDING_WALK_PHASES[weddingPhaseIndex];
+      weddingPhaseTimer = 0;
+      weddingAnimFrame = 0;
+      weddingAnimTimer = 0;
+      if (weddingPhase === 'stop') {
+        // Snap exactly onto the mark in case of any float drift from the
+        // eased walk above, so PARANDO always starts from the same spot
+        // stop-frame 1 was drawn at, never a sub-pixel short/long of it.
+        const t = weddingSceneTransform();
+        weddingCharX = t.x + WEDDING_STOP_X_FRAC * t.drawW;
+      }
+    }
   }
 
   // Scenery art per biome. Desert keeps its original tiling-silhouette
@@ -1278,6 +1374,7 @@
     obstacleStreak = 0;
     recordBrokenThisRun = false;
     pendingWedding = false;
+    weddingPhase = null;
     jumpBufferTimer = 0;
     updateStatusBadges();
     scheduleNextSpawn();
@@ -1894,16 +1991,16 @@
     drawBiomeGround(biome, gY);
   }
 
-  // Wedding ending scenery — a single full illustration (not a tiling
-  // biome strip), drawn to cover the whole W×H world with its own floor
-  // (WEDDING_ART.groundFrac) lined up on GROUND_Y, the same line every
-  // other biome's ground sits on. Scaled uniformly (never stretched):
-  // first to the width needed to span the world edge-to-edge, then, if
-  // that leaves the image's top short of y=0, scaled up further until it
-  // does — centering crops the sides instead of ever distorting the art.
-  // No player/groom/decor drawn here yet — see render()'s 'wedding'
-  // branch.
-  function drawWeddingScene() {
+  // Cover-fit + ground-aligned transform for the wedding background,
+  // recomputed live off the current W/H/GROUND_Y (never cached) so it
+  // stays correct across a resize/orientation change. Shared by
+  // drawWeddingScene() below and by updateWeddingScene()'s walk-target
+  // math (js weddingCharX target), which needs the exact same drawW/
+  // offsetX to convert a fraction of the artwork (e.g. "near the altar
+  // steps") into the matching world-X — a position picked any other way
+  // would drift off the actual altar art the moment the aspect ratio
+  // changes what's cropped.
+  function weddingSceneTransform() {
     const img = SPRITES[WEDDING_ART.key];
     const groundFrac = WEDDING_ART.groundFrac;
     const scaleForWidth = W / img.naturalWidth;
@@ -1913,7 +2010,37 @@
     const drawH = img.naturalHeight * scale;
     const x = (W - drawW) / 2;
     const y = GROUND_Y - groundFrac * drawH;
-    ctx.drawImage(img, x, y, drawW, drawH);
+    return { img, x, y, drawW, drawH };
+  }
+
+  // Wedding ending scenery — a single full illustration (not a tiling
+  // biome strip), drawn to cover the whole W×H world with its own floor
+  // (WEDDING_ART.groundFrac) lined up on GROUND_Y, the same line every
+  // other biome's ground sits on. Scaled uniformly (never stretched):
+  // first to the width needed to span the world edge-to-edge, then, if
+  // that leaves the image's top short of y=0, scaled up further until it
+  // does — centering crops the sides instead of ever distorting the art.
+  function drawWeddingScene() {
+    const t = weddingSceneTransform();
+    ctx.drawImage(t.img, t.x, t.y, t.drawW, t.drawH);
+  }
+
+  const WEDDING_PHASE_FRAMES = {
+    get decelerate() { return WEDDING_DECEL_FRAMES; },
+    get walk() { return WEDDING_WALK_FRAMES; },
+    get stop() { return WEDDING_STOP_FRAMES; },
+    get idle() { return WEDDING_KISS_IDLE_FRAMES; },
+  };
+
+  // Same bottom-right anchor convention as drawPlayer() (drawSpriteRB,
+  // weddingCharX standing in for PLAYER_RIGHT_X) and the same GROUND_Y
+  // ground line as everything else in the game — she can only ever look
+  // planted on the terrace or floating above it, never something in
+  // between, by construction. No groom/kiss/pose yet — see updateWeddingScene().
+  function drawWeddingCharacter() {
+    if (!weddingPhase) return;
+    const img = WEDDING_PHASE_FRAMES[weddingPhase][weddingAnimFrame];
+    drawSpriteRB(ctx, img, weddingCharX, GROUND_Y, currentGirlH());
   }
 
   function drawDecor() {
@@ -2010,8 +2137,10 @@
       if (pendingWedding) drawWeddingScene();
       else drawBackground(BIOME_ORDER[pendingBiomeIndex]);
     } else if (state === 'wedding') {
-      // Scenery only for now — no player/groom/pose until a later step.
+      // Mariana's decelerate/walk/stop/idle sequence — see
+      // updateWeddingScene(). No groom/kiss/pose yet.
       drawWeddingScene();
+      drawWeddingCharacter();
     } else {
       drawBackground();
       drawDecor();
@@ -2055,6 +2184,7 @@
 
     if (state === 'start') updateIdleAnimation(dt);
     if (state === 'transition') updatePortalTransition(dt);
+    if (state === 'wedding') updateWeddingScene(dt);
     if (state !== 'paused') update(dt);
     else { ScreenShake.update(0); }
     render();
@@ -2082,6 +2212,10 @@
     CAT_RUN_FRAMES = framesFromPrefix('catRun', RUN_FRAME_COUNT);
     CAT_JUMP_FRAMES = framesFromPrefix('catJump', JUMP_FRAME_COUNT);
     CAT_IDLE_FRAMES = framesFromPrefix('catIdle', 2);
+    WEDDING_DECEL_FRAMES = framesFromPrefix('weddingDecel', 8);
+    WEDDING_WALK_FRAMES = framesFromPrefix('weddingWalk', 8);
+    WEDDING_STOP_FRAMES = framesFromPrefix('weddingStop', 6);
+    WEDDING_KISS_IDLE_FRAMES = framesFromPrefix('weddingKissIdle', 3);
 
     initBackground();
     resetPlayerY();

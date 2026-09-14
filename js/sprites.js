@@ -98,6 +98,20 @@ const SPRITE_PATHS = {
     SPRITE_PATHS['girlIdle' + i] = `assets/sprites/girl_idle_${n}.png`;
     SPRITE_PATHS['catIdle' + i] = `assets/sprites/cat_idle_${n}.png`;
   }
+
+  // Mariana Noiva's wedding-scene walk-up cycle (decelerate -> walk ->
+  // stop -> idle-for-kiss), separate from her normal girlRun/Jump/Idle
+  // gameplay frames above — used only once state 'wedding' is reached
+  // (see game.js). Sliced from assets/skins/mariana_noiva_wedding.png
+  // by scripts/extract_wedding_walk_frames.py.
+  const weddingCounts = { weddingDecel: 8, weddingWalk: 8, weddingStop: 6, weddingKissIdle: 3 };
+  const weddingFilePrefix = { weddingDecel: 'wedding_decelerate', weddingWalk: 'wedding_walk', weddingStop: 'wedding_stop', weddingKissIdle: 'wedding_idle' };
+  for (const key of Object.keys(weddingCounts)) {
+    for (let i = 1; i <= weddingCounts[key]; i++) {
+      const n = String(i).padStart(2, '0');
+      SPRITE_PATHS[key + i] = `assets/sprites/skins/noiva/${weddingFilePrefix[key]}_${n}.png`;
+    }
+  }
 })();
 
 const SPRITES = {};

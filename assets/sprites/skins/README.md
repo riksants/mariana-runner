@@ -15,6 +15,21 @@ every file for a skin's folder exists, the game automatically uses it
 in the wardrobe preview and during gameplay instead of falling back to
 normal Mariana.
 
+`noiva/` additionally holds a second, unrelated set — `wedding_decelerate_01..08.png`,
+`wedding_walk_01..08.png`, `wedding_stop_01..06.png`, `wedding_idle_01..03.png`
+— for the wedding-ending walk-to-the-altar cutscene (state `'wedding'`
+in `js/game.js`, not the normal run/jump/idle gameplay cycle above).
+Sliced from `assets/skins/mariana_noiva_wedding.png` by
+`scripts/extract_wedding_walk_frames.py` (2026-09-14): unlike the
+run+jump/idle sheets above, this one has four independent single-pose
+rows with a real transparent gap around every frame already, so the
+script only needed plain per-row gap detection (no flood-fill, no
+label/character disambiguation, no seam carving) — see the script's
+module docstring for why. Every frame in one row shares that row's own
+y-crop (never a per-frame tight crop) so the ground line lands on the
+same pixel row across a phase, which is what keeps `drawSpriteRB`'s
+fixed-height scaling from making the feet jitter frame to frame.
+
 All 30 folders here already follow this exact convention, sliced from
 the user-supplied reference sheets in `assets/skins/mariana_*.png`
 (kept there as the source) — if another skin needs slicing from a
