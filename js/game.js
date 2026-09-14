@@ -435,11 +435,6 @@
   // previous best — a mid-run payoff instead of only at game over.
   let recordBrokenThisRun = false;
 
-  // Wedding ending: fires once per run, the instant score first reaches
-  // WEDDING_SCORE_THRESHOLD while Mariana Noiva is the equipped skin —
-  // see the check in update() and beginWeddingTransition() below.
-  let weddingTriggered = false;
-
   let GIRL_RUN_FRAMES, GIRL_JUMP_FRAMES, GIRL_IDLE_FRAMES;
   let CAT_RUN_FRAMES, CAT_JUMP_FRAMES, CAT_IDLE_FRAMES;
 
@@ -540,6 +535,13 @@
   // biome's ground sits on — so characters added in a later step stand
   // on the terrace instead of floating or sinking into it.
   const WEDDING_ART = { key: 'weddingBg', groundFrac: 744 / 941 };
+  // Same fractional-bounds convention as PORTAL_ART above (measured from
+  // the artwork's own opaque bounds, not the padded canvas — this sheet
+  // carries the same kind of soft glow/petals margin around the arch) —
+  // reused by maybeSpawnPortal()/drawPortal() exactly like any other
+  // portal entry, just swapped in only at the WEDDING_SCORE_THRESHOLD
+  // checkpoint when Mariana Noiva is equipped.
+  const WEDDING_PORTAL_ART = { key: 'portalWedding', left: 0.1823, top: 0.0158, right: 0.9476, bottom: 0.9472 };
   let pendingWedding = false;
 
   function maybeSpawnPortal() {
@@ -550,7 +552,16 @@
     // Clear the field so nothing already on screen can block the path to
     // the portal that's about to appear.
     obstacles = [];
-    const art = PORTAL_ART[activeBiome()];
+    // The one checkpoint whose threshold equals WEDDING_SCORE_THRESHOLD
+    // (42000 = 6 * BIOME_SCORE_STEP) spawns the wedding portal instead of
+    // the normal next-biome one, but only with Mariana Noiva equipped —
+    // any other skin gets the ordinary portal and the biome cycle
+    // continues exactly as before. Equipped skin can't change mid-run
+    // (the wardrobe is only reachable from the start/game-over screens),
+    // so this check is stable for the rest of this run.
+    const isWeddingCheckpoint = nextCheckpoint * BIOME_SCORE_STEP === WEDDING_SCORE_THRESHOLD
+      && SkinStore.getEquipped() === WEDDING_SKIN_ID;
+    const art = isWeddingCheckpoint ? WEDDING_PORTAL_ART : PORTAL_ART[activeBiome()];
     const img = SPRITES[art.key];
     const h = GIRL_H_BASE * PORTAL_HEIGHT_RATIO;
     const drawH = h / (art.bottom - art.top);
@@ -564,6 +575,7 @@
       drawH,
       t: 0,
       triggered: false,
+      wedding: isWeddingCheckpoint,
     };
   }
 
@@ -1265,7 +1277,6 @@
     coinBonusTimer = 0;
     obstacleStreak = 0;
     recordBrokenThisRun = false;
-    weddingTriggered = false;
     pendingWedding = false;
     jumpBufferTimer = 0;
     updateStatusBadges();
@@ -1457,18 +1468,11 @@
 
     const flooredScore = Math.floor(score);
 
-    // Wedding ending gate — both conditions checked live (score threshold
-    // AND the skin equipped right now), weddingTriggered making this a
-    // once-per-run edge rather than a level trigger that could re-fire
-    // every frame the score stays above WEDDING_SCORE_THRESHOLD. Placed
-    // before maybeSpawnPortal() so crossing 42000 never also spawns a
-    // biome portal in the same frame.
-    if (!weddingTriggered && flooredScore >= WEDDING_SCORE_THRESHOLD && SkinStore.getEquipped() === WEDDING_SKIN_ID) {
-      weddingTriggered = true;
-      beginWeddingTransition();
-      return;
-    }
-
+    // The wedding ending is entered through its own portal, spawned by
+    // maybeSpawnPortal() at the WEDDING_SCORE_THRESHOLD checkpoint and
+    // touched exactly like any other portal (see the touch-check below,
+    // `if (portal.wedding) beginWeddingTransition()`) — no separate
+    // score-threshold trigger here.
     maybeSpawnPortal();
 
     if (flooredScore >= milestoneFloor + 100) {
@@ -1664,7 +1668,8 @@
       const doorY = GROUND_Y - portal.h;
       if (px < doorX + doorW && px + pw > doorX && hitboxY < doorY + portal.h && hitboxY + hitboxH > doorY) {
         portal.triggered = true;
-        beginBiomeTransition();
+        if (portal.wedding) beginWeddingTransition();
+        else beginBiomeTransition();
       }
     }
 

@@ -72,6 +72,11 @@ const SPRITE_PATHS = {
   // Mariana Noiva skin equipped (see game.js). Official reference art,
   // loaded as-is like every other scenery sheet — never redrawn.
   weddingBg: 'assets/sprites/wedding_bg.png',
+  // Entry portal for that scene, spawned by the normal checkpoint-portal
+  // system instead of the desert/selva/neve/vulcao art above — kept as
+  // the official PNG as provided (not converted to WebP like the others)
+  // per the asset instructions for this one.
+  portalWedding: 'assets/sprites/portal_wedding.png',
 };
 
 (function buildFrameManifest() {
