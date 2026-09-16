@@ -213,12 +213,18 @@
   // rather than a purely cosmetic re-skin like every other one).
   const SKIN_SCALE = { mini: 0.72 };
   // Alberto-as-main-runner only (playableCharacter === 'alberto') plays
-  // about 15% smaller than the standard size, visually and in hitbox —
+  // about 40% smaller than the standard size, visually and in hitbox —
   // a pure render/collision-box scale, same mechanism as SKIN_SCALE.mini
   // above, touching nothing about GRAVITY/JUMP_VELOCITY/speed. Does NOT
   // apply to Alberto following Mariana as her companion: drawCat() always
   // draws at the fixed CAT_H below, never through currentGirlScale().
-  const ALBERTO_SOLO_SCALE = 0.85;
+  // Ground alignment and hitbox position need no separate adjustment for
+  // this: drawPlayer() -> drawSpriteRB() always anchors the sprite's
+  // BOTTOM edge at player.y (never at a fixed height), and the collision
+  // hitbox's Y is computed as `player.y - currentGirlH() + hitbox.topInset`
+  // (see update()'s "--- collision ---" block) -- both already move
+  // together with whatever this constant is, automatically.
+  const ALBERTO_SOLO_SCALE = 0.6;
   function currentGirlScale() {
     // Guarded to Mariana's own turn as the main runner: Mariana's equipped
     // skin (and its scale) is independent of Alberto's now, so without
