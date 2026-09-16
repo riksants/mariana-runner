@@ -28,9 +28,11 @@ const CLOUD_CONFIG = {
   emailDomain: 'marianarunner.local',
 };
 
-// As oito chaves que o jogo já persistia antes desta funcionalidade.
-// Nomes conferidos um a um em skins.js, achievements.js, audio.js e
-// game.js — nada aqui foi inventado.
+// As oito chaves que o jogo já persistia antes desta funcionalidade, mais
+// as três do personagem Alberto (guarda-roupa próprio + personagem
+// jogável escolhido, 2026-09-16) — mesmo padrão, mesma sincronização
+// automática via installWatcher() abaixo. Nomes conferidos um a um em
+// skins.js, achievements.js, audio.js e game.js — nada aqui foi inventado.
 const CLOUD_KEYS = {
   coins: 'marianaRunnerCoins',
   unlocked: 'marianaRunnerUnlockedSkins',
@@ -40,6 +42,9 @@ const CLOUD_KEYS = {
   lifetimeCoins: 'marianaRunnerLifetimeCoins',
   muted: 'marianaRunnerMuted',
   seenHint: 'marianaRunnerSeenHint',
+  albertoUnlocked: 'marianaRunnerAlbertoUnlockedSkins',
+  albertoEquipped: 'marianaRunnerAlbertoEquippedSkin',
+  playableCharacter: 'marianaRunnerPlayableCharacter',
 };
 const WATCHED = new Set(Object.values(CLOUD_KEYS));
 
@@ -91,6 +96,9 @@ const CloudSave = (() => {
       highScore: Number(readRaw(CLOUD_KEYS.highScore) || 0),
       achievements: parseList(readRaw(CLOUD_KEYS.achievements), []),
       lifetimeCoins: Number(readRaw(CLOUD_KEYS.lifetimeCoins) || 0),
+      albertoUnlocked: parseList(readRaw(CLOUD_KEYS.albertoUnlocked), ['normal']),
+      albertoEquipped: readRaw(CLOUD_KEYS.albertoEquipped) || 'normal',
+      playableCharacter: readRaw(CLOUD_KEYS.playableCharacter) === 'alberto' ? 'alberto' : 'mariana',
       muted: readRaw(CLOUD_KEYS.muted),
       seenHint: readRaw(CLOUD_KEYS.seenHint),
     };
@@ -128,14 +136,32 @@ const CloudSave = (() => {
     const unlocked = union(local.unlocked, cloud.unlocked);
     if (!unlocked.includes('normal')) unlocked.unshift('normal');
 
+    // Alberto's own unlocked list -- `union(a, b)` already treats a missing
+    // (pre-Alberto) side as [] via its own `(a || [])`, so an old cloud row
+    // with no albertoUnlocked field just contributes nothing here instead
+    // of throwing.
+    const albertoUnlocked = union(local.albertoUnlocked, cloud.albertoUnlocked);
+    if (!albertoUnlocked.includes('normal')) albertoUnlocked.unshift('normal');
+
     const preferred = localIsNewer ? local : cloud;
     let equipped = preferred.equipped;
     if (!unlocked.includes(equipped)) equipped = unlocked.includes(local.equipped) ? local.equipped : 'normal';
+
+    let albertoEquipped = preferred.albertoEquipped;
+    if (!albertoUnlocked.includes(albertoEquipped)) {
+      albertoEquipped = albertoUnlocked.includes(local.albertoEquipped) ? local.albertoEquipped : 'normal';
+    }
 
     return {
       coins: localIsNewer ? Math.max(local.coins, cloud.coins) : cloud.coins,
       unlocked,
       equipped,
+      albertoUnlocked,
+      albertoEquipped,
+      // Same "most recent side wins" rule as `equipped` above, not a
+      // second permanent-unlock union -- picking who's playable is a
+      // switch, not an achievement.
+      playableCharacter: preferred.playableCharacter || 'mariana',
       highScore: Math.max(local.highScore || 0, cloud.highScore || 0),
       achievements: union(local.achievements, cloud.achievements),
       lifetimeCoins: Math.max(local.lifetimeCoins || 0, cloud.lifetimeCoins || 0),
@@ -156,12 +182,18 @@ const CloudSave = (() => {
     writeRaw(CLOUD_KEYS.highScore, s.highScore);
     writeRaw(CLOUD_KEYS.achievements, JSON.stringify(s.achievements));
     writeRaw(CLOUD_KEYS.lifetimeCoins, s.lifetimeCoins);
+    writeRaw(CLOUD_KEYS.albertoUnlocked, JSON.stringify(s.albertoUnlocked || ['normal']));
+    writeRaw(CLOUD_KEYS.albertoEquipped, s.albertoEquipped || 'normal');
+    writeRaw(CLOUD_KEYS.playableCharacter, s.playableCharacter || 'mariana');
     if (s.muted !== null && s.muted !== undefined) writeRaw(CLOUD_KEYS.muted, s.muted);
     if (s.seenHint) writeRaw(CLOUD_KEYS.seenHint, s.seenHint);
     return before.coins !== s.coins ||
            before.highScore !== s.highScore ||
            before.equipped !== s.equipped ||
-           before.unlocked.length !== s.unlocked.length;
+           before.unlocked.length !== s.unlocked.length ||
+           before.albertoEquipped !== s.albertoEquipped ||
+           before.albertoUnlocked.length !== (s.albertoUnlocked || ['normal']).length ||
+           before.playableCharacter !== s.playableCharacter;
   }
 
   // ---------- sessão ----------
@@ -402,7 +434,7 @@ const CloudSave = (() => {
     state: publicState,
     onChange(fn) { listeners.push(fn); },
     // expostos para teste e para a interface
-    normalizeNick, nickIsValid, snapshot, merge, isEmpty,
+    normalizeNick, nickIsValid, snapshot, merge, isEmpty, applySnapshot,
     KEYS: CLOUD_KEYS,
   };
 })();

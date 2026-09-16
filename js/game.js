@@ -55,6 +55,10 @@
   const btnWardrobe = document.getElementById('btn-wardrobe');
   const btnWardrobeGameover = document.getElementById('btn-wardrobe-gameover');
   const btnWardrobeBack = document.getElementById('btn-wardrobe-back');
+  const btnCharMariana = document.getElementById('btn-char-mariana');
+  const btnCharAlberto = document.getElementById('btn-char-alberto');
+  const btnWardrobeTabMariana = document.getElementById('btn-wardrobe-tab-mariana');
+  const btnWardrobeTabAlberto = document.getElementById('btn-wardrobe-tab-alberto');
   const btnStart = document.getElementById('btn-start');
   const btnRestart = document.getElementById('btn-restart');
   const btnWeddingRestart = document.getElementById('btn-wedding-restart');
@@ -209,6 +213,12 @@
   // rather than a purely cosmetic re-skin like every other one).
   const SKIN_SCALE = { mini: 0.72 };
   function currentGirlScale() {
+    // Guarded to Mariana's own turn as the main runner: Mariana's equipped
+    // skin (and its scale) is independent of Alberto's now, so without
+    // this check, playing as Alberto while Mariana happens to have "mini"
+    // equipped would shrink Alberto's height/hitbox for no reason —
+    // nothing to do with which character is actually on screen.
+    if (playableCharacter === 'alberto') return 1;
     return SKIN_SCALE[SkinStore.getEquipped()] || 1;
   }
   function currentGirlH() {
@@ -355,6 +365,17 @@
   let score = 0;
   let highScore = Number(localStorage.getItem('marianaRunnerHighScore') || 0);
   let seenHint = localStorage.getItem('marianaRunnerSeenHint') === '1';
+
+  // Which character runs in the main position: 'mariana' (default, today's
+  // only behavior — Alberto keeps following as the companion) or 'alberto'
+  // (he becomes the solo runner, Mariana isn't drawn at all). Persisted so
+  // it survives reload/restart; picking a skin for either character is a
+  // separate, independent choice (SkinStore / AlbertoSkinStore below).
+  const PLAYABLE_CHARACTER_KEY = 'marianaRunnerPlayableCharacter';
+  let playableCharacter = localStorage.getItem(PLAYABLE_CHARACTER_KEY) === 'alberto' ? 'alberto' : 'mariana';
+  // Which character's skins the wardrobe grid is currently showing —
+  // purely a UI toggle, not persisted (always opens on Mariana's tab).
+  let wardrobeTab = 'mariana';
   let milestoneFloor = 0;
   // Throttles the milestone pulse/chime by real time, not just score —
   // score climbs faster as the run speeds up, so at max speed a plain
@@ -627,12 +648,16 @@
     obstacles = [];
     // The one checkpoint whose threshold equals WEDDING_SCORE_THRESHOLD
     // (42000 = 6 * BIOME_SCORE_STEP) spawns the wedding portal instead of
-    // the normal next-biome one, but only with Mariana Noiva equipped —
-    // any other skin gets the ordinary portal and the biome cycle
-    // continues exactly as before. Equipped skin can't change mid-run
-    // (the wardrobe is only reachable from the start/game-over screens),
-    // so this check is stable for the rest of this run.
+    // the normal next-biome one, but only when playing as Mariana with
+    // Mariana Noiva equipped — any other skin, or playing as Alberto
+    // (where Mariana's equipped skin is irrelevant since she isn't on
+    // screen at all), gets the ordinary portal and the biome cycle
+    // continues exactly as before. Neither equipped skin nor playable
+    // character can change mid-run (both are only reachable from the
+    // start/game-over screens), so this check is stable for the rest of
+    // this run.
     const isWeddingCheckpoint = nextCheckpoint * BIOME_SCORE_STEP === WEDDING_SCORE_THRESHOLD
+      && playableCharacter === 'mariana'
       && SkinStore.getEquipped() === WEDDING_SKIN_ID;
     const art = isWeddingCheckpoint ? WEDDING_PORTAL_ART : PORTAL_ART[activeBiome()];
     const img = SPRITES[art.key];
@@ -1551,6 +1576,50 @@
     closeWardrobe();
   });
 
+  // ---------- Personagem jogável (Mariana | Alberto) ----------
+  function updateCharacterSelectUI() {
+    btnCharMariana.classList.toggle('is-active', playableCharacter === 'mariana');
+    btnCharAlberto.classList.toggle('is-active', playableCharacter === 'alberto');
+  }
+
+  function setPlayableCharacter(id) {
+    playableCharacter = id === 'alberto' ? 'alberto' : 'mariana';
+    localStorage.setItem(PLAYABLE_CHARACTER_KEY, playableCharacter);
+    updateCharacterSelectUI();
+  }
+
+  btnCharMariana.addEventListener('click', (e) => {
+    e.stopPropagation();
+    AudioMgr.uiClick();
+    setPlayableCharacter('mariana');
+  });
+  btnCharAlberto.addEventListener('click', (e) => {
+    e.stopPropagation();
+    AudioMgr.uiClick();
+    setPlayableCharacter('alberto');
+  });
+
+  // ---------- Aba do Guarda-Roupa (Mariana | Alberto) ----------
+  function setWardrobeTab(tab) {
+    wardrobeTab = tab === 'alberto' ? 'alberto' : 'mariana';
+    btnWardrobeTabMariana.classList.toggle('is-active', wardrobeTab === 'mariana');
+    btnWardrobeTabAlberto.classList.toggle('is-active', wardrobeTab === 'alberto');
+    btnWardrobeTabMariana.setAttribute('aria-selected', String(wardrobeTab === 'mariana'));
+    btnWardrobeTabAlberto.setAttribute('aria-selected', String(wardrobeTab === 'alberto'));
+    renderWardrobe();
+  }
+
+  btnWardrobeTabMariana.addEventListener('click', (e) => {
+    e.stopPropagation();
+    AudioMgr.uiClick();
+    setWardrobeTab('mariana');
+  });
+  btnWardrobeTabAlberto.addEventListener('click', (e) => {
+    e.stopPropagation();
+    AudioMgr.uiClick();
+    setWardrobeTab('alberto');
+  });
+
   const SKIN_ICON_SVG = {
     normal: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>',
     crown: '<svg viewBox="0 0 24 24"><path d="M4 18h16l-1.5-8-4 3-2.5-5-2.5 5-4-3z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>',
@@ -1590,18 +1659,31 @@
     return coinBalance >= skinById(id).price ? 'buyable' : 'locked';
   }
 
+  function albertoSkinCardStatus(id) {
+    if (id === AlbertoSkinStore.getEquipped()) return 'equipped';
+    if (AlbertoSkinStore.isUnlocked(id)) return 'owned';
+    return coinBalance >= albertoSkinById(id).price ? 'buyable' : 'locked';
+  }
+
   const SKIN_STATUS_LABEL = { equipped: 'EQUIPADA', owned: 'EQUIPAR', buyable: 'COMPRAR', locked: 'BLOQUEADA' };
 
   function renderWardrobe() {
     wardrobeCoinsValue.textContent = String(coinBalance);
-    wardrobeGrid.innerHTML = SKIN_DEFS.map((skin) => {
-      const status = skinCardStatus(skin.id);
+    const isAlberto = wardrobeTab === 'alberto';
+    const defs = isAlberto ? ALBERTO_SKIN_DEFS : SKIN_DEFS;
+    const statusFor = isAlberto ? albertoSkinCardStatus : skinCardStatus;
+    const previewReady = isAlberto ? ALBERTO_SKIN_PREVIEW_READY : SKIN_PREVIEW_READY;
+    const previewDir = isAlberto ? 'assets/sprites/skins/alberto' : 'assets/sprites/skins';
+    const previewFile = isAlberto ? 'cat_idle_01.png' : 'girl_idle_01.png';
+    const fallbackPreview = isAlberto ? 'assets/sprites/cat_idle_01.png' : 'assets/sprites/girl_idle_01.png';
+    wardrobeGrid.innerHTML = defs.map((skin) => {
+      const status = statusFor(skin.id);
       const btnClass = status === 'equipped' ? 'is-equipped' : status === 'buyable' ? 'is-buyable' : '';
       const disabled = (status === 'equipped' || status === 'locked') ? 'disabled' : '';
       const priceLabel = skin.price > 0 ? `${skin.price} MOEDAS` : 'GRÁTIS';
-      const previewSrc = SKIN_PREVIEW_READY[skin.id]
-        ? `assets/sprites/skins/${skin.id}/girl_idle_01.png`
-        : 'assets/sprites/girl_idle_01.png';
+      const previewSrc = previewReady[skin.id]
+        ? `${previewDir}/${skin.id}/${previewFile}`
+        : fallbackPreview;
       return `
         <div class="skin-card">
           <div class="skin-card-preview">
@@ -1610,7 +1692,7 @@
           </div>
           <div class="skin-card-name">${skin.name.toUpperCase()}</div>
           <div class="skin-card-price">${priceLabel}</div>
-          <button type="button" class="skin-card-btn ${btnClass}" data-action="${status}" data-skin-id="${skin.id}" ${disabled}>${SKIN_STATUS_LABEL[status]}</button>
+          <button type="button" class="skin-card-btn ${btnClass}" data-action="${status}" data-skin-id="${skin.id}" data-character="${wardrobeTab}" ${disabled}>${SKIN_STATUS_LABEL[status]}</button>
         </div>`;
     }).join('');
   }
@@ -1620,17 +1702,20 @@
     if (!btn || btn.disabled) return;
     const id = btn.dataset.skinId;
     const action = btn.dataset.action;
+    const isAlberto = btn.dataset.character === 'alberto';
+    const store = isAlberto ? AlbertoSkinStore : SkinStore;
+    const loadFrames = isAlberto ? loadAlbertoSkinFullFrames : loadSkinFullFrames;
     if (action === 'buyable') {
-      const res = SkinStore.purchase(id);
+      const res = store.purchase(id);
       if (res.ok) {
-        coinBalance = SkinStore.getCoins();
+        coinBalance = SkinStore.getCoins(); // shared coin balance regardless of which wardrobe spent it
         AudioMgr.powerup();
         updateCoinsHud();
-        if (SkinStore.getUnlocked().length === SKIN_DEFS.length) unlockAchievement('all_skins');
+        if (!isAlberto && SkinStore.getUnlocked().length === SKIN_DEFS.length) unlockAchievement('all_skins');
       }
     } else if (action === 'owned') {
-      SkinStore.setEquipped(id);
-      loadSkinFullFrames(id); // fire-and-forget: lazy full-cycle load, see sprites.js
+      store.setEquipped(id);
+      loadFrames(id); // fire-and-forget: lazy full-cycle load, see sprites.js
       AudioMgr.uiClick();
     }
     renderWardrobe();
@@ -2191,8 +2276,19 @@
     return { run: GIRL_RUN_FRAMES, jump: GIRL_JUMP_FRAMES, idle: GIRL_IDLE_FRAMES };
   }
 
+  // Alberto's own equipped-skin frames, same fallback contract as
+  // currentGirlFrames() above — used both by drawCat() (companion, always
+  // CAT_H) and by drawPlayer() when he's the main runner (playableCharacter
+  // === 'alberto'), so his skin choice renders the same way in either role.
+  function currentCatSkinFrames() {
+    const skinFrames = ALBERTO_SKIN_SPRITE_FRAMES[AlbertoSkinStore.getEquipped()];
+    if (skinFrames) return skinFrames;
+    return { run: CAT_RUN_FRAMES, jump: CAT_JUMP_FRAMES, idle: CAT_IDLE_FRAMES };
+  }
+
   function drawPlayer() {
-    const frames = currentGirlFrames();
+    const isAlberto = playableCharacter === 'alberto';
+    const frames = isAlberto ? currentCatSkinFrames() : currentGirlFrames();
     let img;
     if (state === 'start') {
       img = frames.idle[idleFrame];
@@ -2208,13 +2304,14 @@
     const airborneLift = (GROUND_Y - player.y) * CAT_JUMP_BOOST;
     const catBottomY = GROUND_Y - airborneLift;
     const catRightX = PLAYER_RIGHT_X - CAT_OFFSET_X;
+    const frames = currentCatSkinFrames();
     let img;
     if (state === 'start') {
-      img = CAT_IDLE_FRAMES[idleFrame];
+      img = frames.idle[idleFrame];
     } else if (player.jumping) {
-      img = CAT_JUMP_FRAMES[jumpFrameIndex()];
+      img = frames.jump[jumpFrameIndex()];
     } else {
-      img = CAT_RUN_FRAMES[player.frame];
+      img = frames.run[player.frame];
     }
     drawSpriteRB(ctx, img, catRightX, catBottomY, CAT_H);
   }
@@ -2245,7 +2342,10 @@
     if (state === 'start') {
       drawBackground();
       drawDecor();
-      drawCat();
+      // Alberto-as-main renders solo — drawPlayer() already switches to
+      // his own frames below; skipping drawCat() here is what keeps him
+      // from also appearing as his own companion.
+      if (playableCharacter === 'mariana') drawCat();
       drawPlayer();
     } else if (state === 'transition') {
       // Atmospheric preview behind the loading overlay: the wedding
@@ -2277,7 +2377,7 @@
       drawPowerups();
       drawCoins();
       if (portal) drawPortal();
-      drawCat();
+      if (playableCharacter === 'mariana') drawCat();
       drawPlayer();
       if (shieldActive) drawShieldHalo();
       const darkness = currentDarkness();
@@ -2333,6 +2433,7 @@
 
   updateHud();
   updateCoinsHud();
+  updateCharacterSelectUI();
   Promise.all([loadAllSprites(), loadSkinSprites()]).then(() => {
     clearInterval(loadingTimer);
     GIRL_RUN_FRAMES = framesFromPrefix('girlRun', RUN_FRAME_COUNT);

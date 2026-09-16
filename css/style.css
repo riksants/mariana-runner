@@ -655,6 +655,33 @@ html, body {
   #hud-score-value.pulse { animation: none; }
 }
 
+/* ---------- Seleção de personagem jogável (Mariana | Alberto) ---------- */
+#character-select {
+  display: flex;
+  border: clamp(2px, 0.5vmin, 3px) solid var(--ink);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.char-btn {
+  font-family: var(--font-display);
+  font-size: clamp(9px, 2vmin, 12px);
+  padding: clamp(6px, 1.4vmin, 10px) clamp(14px, 3vmin, 22px);
+  border: none;
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.char-btn + .char-btn {
+  border-left: clamp(2px, 0.5vmin, 3px) solid var(--ink);
+}
+
+.char-btn.is-active {
+  background: var(--ink);
+  color: var(--paper);
+}
+
 /* ---------- Guarda-Roupa (wardrobe) ---------- */
 #menu-coins,
 #wardrobe-coins {
@@ -849,6 +876,30 @@ html, body {
   align-items: center;
   justify-content: space-between;
   flex: none;
+}
+
+#wardrobe-tabs {
+  display: flex;
+  gap: clamp(6px, 1.6vmin, 10px);
+  width: 100%;
+  max-width: 640px;
+  flex: none;
+}
+
+.wardrobe-tab {
+  flex: 1 1 0;
+  font-family: var(--font-display);
+  font-size: clamp(9px, 2vmin, 12px);
+  padding: clamp(7px, 1.6vmin, 11px) clamp(10px, 2vmin, 16px);
+  border: 2px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.wardrobe-tab.is-active {
+  background: var(--ink);
+  color: var(--paper);
 }
 
 #wardrobe-grid {

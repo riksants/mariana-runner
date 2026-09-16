@@ -124,6 +124,14 @@
           </div>
         </div>
 
+        <!-- Personagem jogável: só decide quem corre na posição principal
+             (game.js:playableCharacter) -- a skin equipada de cada um é
+             escolhida à parte, no Guarda-Roupa. -->
+        <div id="character-select" role="group" aria-label="Escolher personagem">
+          <button type="button" class="char-btn is-active" id="btn-char-mariana" data-character="mariana">MARIANA</button>
+          <button type="button" class="char-btn" id="btn-char-alberto" data-character="alberto">ALBERTO</button>
+        </div>
+
         <div id="menu-buttons">
           <button type="button" id="btn-wardrobe" class="pixel-btn pixel-btn--small">
             <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.6 3 4 5.4 2.4 9.6l3.2 1.5L6 21h12l.4-9.9 3.2-1.5L20 5.4 15.4 3c-.5 1.6-1.8 2.5-3.4 2.5S9.1 4.6 8.6 3z"/></svg>
@@ -233,6 +241,10 @@
             <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><line x1="12" y1="7.5" x2="12" y2="16.5" stroke="currentColor" stroke-width="1.6"/></svg>
             <span id="wardrobe-coins-value">0</span>
           </div>
+        </div>
+        <div id="wardrobe-tabs" role="tablist">
+          <button type="button" class="wardrobe-tab is-active" id="btn-wardrobe-tab-mariana" data-character="mariana" role="tab" aria-selected="true">MARIANA</button>
+          <button type="button" class="wardrobe-tab" id="btn-wardrobe-tab-alberto" data-character="alberto" role="tab" aria-selected="false">ALBERTO</button>
         </div>
         <div id="wardrobe-grid"></div>
         <button type="button" id="btn-wardrobe-back" class="pixel-btn">VOLTAR</button>

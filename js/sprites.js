@@ -249,6 +249,48 @@ function loadSkinPreviews() {
   return Promise.all(tasks);
 }
 
+// Alberto's per-skin frames/previews -- same lazy-loading contract as
+// SKIN_SPRITE_FRAMES/SKIN_PREVIEW_READY above (own object per character,
+// so a skin id shared between the two, e.g. "pirata", never collides),
+// reading from assets/sprites/skins/alberto/<id>/cat_*.png instead of
+// .../skins/<id>/girl_*.png.
+const ALBERTO_SKIN_SPRITE_FRAMES = {};
+const ALBERTO_SKIN_PREVIEW_READY = {};
+const albertoSkinFullFrameLoads = {};
+
+function loadAlbertoSkinFullFrames(skinId) {
+  if (skinId === 'normal') return Promise.resolve();
+  if (albertoSkinFullFrameLoads[skinId]) return albertoSkinFullFrameLoads[skinId];
+  const runFrames = 12, jumpFrames = 4, idleFrames = 2;
+  const load = (prefix, count) => {
+    const paths = [];
+    for (let i = 1; i <= count; i++) {
+      const n = String(i).padStart(2, '0');
+      paths.push(`assets/sprites/skins/alberto/${skinId}/${prefix}_${n}.png`);
+    }
+    return Promise.all(paths.map(loadImageOptional));
+  };
+  const promise = Promise.all([
+    load('cat_run', runFrames),
+    load('cat_jump', jumpFrames),
+    load('cat_idle', idleFrames),
+  ]).then(([run, jump, idle]) => {
+    const complete = [...run, ...jump, ...idle].every(Boolean);
+    ALBERTO_SKIN_SPRITE_FRAMES[skinId] = complete ? { run, jump, idle } : null;
+  });
+  albertoSkinFullFrameLoads[skinId] = promise;
+  return promise;
+}
+
+function loadAlbertoSkinPreviews() {
+  const tasks = ALBERTO_SKIN_DEFS.filter((s) => s.id !== 'normal').map((skin) =>
+    loadImageOptional(`assets/sprites/skins/alberto/${skin.id}/cat_idle_01.png`).then((img) => {
+      ALBERTO_SKIN_PREVIEW_READY[skin.id] = !!img;
+    })
+  );
+  return Promise.all(tasks);
+}
+
 // Boot-time loading only fetches the currently-equipped skin's full
 // run/jump/idle cycle (needed to actually play) plus one small preview
 // frame per skin (needed for the wardrobe grid) -- not every skin's
@@ -258,7 +300,13 @@ function loadSkinPreviews() {
 // that skin's full-cycle load in the background (see the wardrobe click
 // handler in game.js) -- until it resolves, currentGirlFrames() already
 // falls back to normal Mariana, the same graceful-degradation path this
-// file has always used for a skin with no art at all.
+// file has always used for a skin with no art at all. Alberto's equipped
+// skin/previews load the same way, alongside Mariana's.
 function loadSkinSprites() {
-  return Promise.all([loadSkinFullFrames(SkinStore.getEquipped()), loadSkinPreviews()]);
+  return Promise.all([
+    loadSkinFullFrames(SkinStore.getEquipped()),
+    loadSkinPreviews(),
+    loadAlbertoSkinFullFrames(AlbertoSkinStore.getEquipped()),
+    loadAlbertoSkinPreviews(),
+  ]);
 }

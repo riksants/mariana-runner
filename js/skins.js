@@ -94,6 +94,68 @@ const SkinStore = {
   },
 };
 
+// Alberto (the cat) skin economy — separate wardrobe/equip slot from
+// Mariana's above, but the SAME coin balance (SkinStore.getCoins/addCoins):
+// one currency, two wardrobes. Prices set by the project owner 2026-09-16,
+// not derived from Mariana's ladder.
+const ALBERTO_SKIN_DEFS = [
+  { id: 'normal',    name: 'Alberto',          price: 0,    icon: 'normal' },
+  { id: 'anjo',      name: 'Alberto Anjinho',  price: 900,  icon: 'halo' },
+  { id: 'pijama',    name: 'Alberto Pijama',   price: 1150, icon: 'moon' },
+  { id: 'cowboy',    name: 'Alberto Cowboy',   price: 1400, icon: 'sheriffstar' },
+  { id: 'ninja',     name: 'Alberto Ninja',    price: 1650, icon: 'shuriken' },
+  { id: 'pirata',    name: 'Alberto Pirata',   price: 1900, icon: 'skull' },
+  { id: 'vampiro',   name: 'Alberto Vampiro',  price: 2150, icon: 'fang' },
+  { id: 'diabinho',  name: 'Alberto Diabinho', price: 2400, icon: 'devilhorns' },
+  { id: 'principe',  name: 'Alberto Príncipe', price: 2700, icon: 'crown' },
+];
+
+const ALBERTO_SKIN_STORAGE_KEYS = {
+  unlocked: 'marianaRunnerAlbertoUnlockedSkins',
+  equipped: 'marianaRunnerAlbertoEquippedSkin',
+};
+
+function albertoSkinById(id) {
+  return ALBERTO_SKIN_DEFS.find((s) => s.id === id) || ALBERTO_SKIN_DEFS[0];
+}
+
+const AlbertoSkinStore = {
+  getUnlocked() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(ALBERTO_SKIN_STORAGE_KEYS.unlocked) || '["normal"]');
+      return Array.isArray(raw) && raw.length ? raw : ['normal'];
+    } catch (e) {
+      return ['normal'];
+    }
+  },
+  isUnlocked(id) {
+    return this.getUnlocked().includes(id);
+  },
+  unlock(id) {
+    const list = this.getUnlocked();
+    if (!list.includes(id)) list.push(id);
+    localStorage.setItem(ALBERTO_SKIN_STORAGE_KEYS.unlocked, JSON.stringify(list));
+  },
+  getEquipped() {
+    const id = localStorage.getItem(ALBERTO_SKIN_STORAGE_KEYS.equipped) || 'normal';
+    return this.isUnlocked(id) ? id : 'normal';
+  },
+  setEquipped(id) {
+    if (!this.isUnlocked(id)) return false;
+    localStorage.setItem(ALBERTO_SKIN_STORAGE_KEYS.equipped, id);
+    return true;
+  },
+  // Never throws — same contract as SkinStore.purchase.
+  purchase(id) {
+    const skin = albertoSkinById(id);
+    if (this.isUnlocked(id)) return { ok: false, reason: 'already-owned' };
+    if (SkinStore.getCoins() < skin.price) return { ok: false, reason: 'insufficient-coins' };
+    SkinStore.addCoins(-skin.price);
+    this.unlock(id);
+    return { ok: true };
+  },
+};
+
 // Coin cluster economy — see docs/superpowers/specs/2026-09-05-wardrobe-skins-design.md
 // "Coin economy" section for how these numbers were derived. Retune here only.
 // Gap widened 2026-09-06 (was 90/70, ~125 avg): the gap is a *distance*
