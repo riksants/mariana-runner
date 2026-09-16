@@ -212,13 +212,20 @@
   // noticeably smaller, hitbox included (a real, if small, gameplay perk
   // rather than a purely cosmetic re-skin like every other one).
   const SKIN_SCALE = { mini: 0.72 };
+  // Alberto-as-main-runner only (playableCharacter === 'alberto') plays
+  // about 15% smaller than the standard size, visually and in hitbox —
+  // a pure render/collision-box scale, same mechanism as SKIN_SCALE.mini
+  // above, touching nothing about GRAVITY/JUMP_VELOCITY/speed. Does NOT
+  // apply to Alberto following Mariana as her companion: drawCat() always
+  // draws at the fixed CAT_H below, never through currentGirlScale().
+  const ALBERTO_SOLO_SCALE = 0.85;
   function currentGirlScale() {
     // Guarded to Mariana's own turn as the main runner: Mariana's equipped
     // skin (and its scale) is independent of Alberto's now, so without
     // this check, playing as Alberto while Mariana happens to have "mini"
-    // equipped would shrink Alberto's height/hitbox for no reason —
+    // equipped would shrink Alberto's height/hitbox for the wrong reason —
     // nothing to do with which character is actually on screen.
-    if (playableCharacter === 'alberto') return 1;
+    if (playableCharacter === 'alberto') return ALBERTO_SOLO_SCALE;
     return SKIN_SCALE[SkinStore.getEquipped()] || 1;
   }
   function currentGirlH() {
