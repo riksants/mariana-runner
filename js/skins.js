@@ -37,6 +37,7 @@ const SKIN_DEFS = [
   { id: 'coelhinha', name: 'Mariana Coelhinha', price: 4300, icon: 'bunny' },
   { id: 'anjo',     name: 'Mariana Anjo',     price: 4850, icon: 'halo' },
   { id: 'noiva',    name: 'Mariana Noiva',    price: 5000, icon: 'ring', special: true },
+  { id: 'rapunzel', name: 'Mariana Rapunzel', price: 2650, icon: 'hairlock' },
 ];
 
 const SKIN_STORAGE_KEYS = {
@@ -108,6 +109,7 @@ const ALBERTO_SKIN_DEFS = [
   { id: 'vampiro',   name: 'Alberto Vampiro',  price: 2150, icon: 'fang' },
   { id: 'diabinho',  name: 'Alberto Diabinho', price: 2400, icon: 'devilhorns' },
   { id: 'principe',  name: 'Alberto Príncipe', price: 2700, icon: 'crown' },
+  { id: 'pascal',    name: 'Alberto Pascal',   price: 2950, icon: 'chameleon' },
 ];
 
 const ALBERTO_SKIN_STORAGE_KEYS = {

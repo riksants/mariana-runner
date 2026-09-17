@@ -56,7 +56,7 @@ pose bleeding across a cut point (dropped via the same
 touches-the-crop's-own-edge rule `extract_skin_frames_alpha.py`'s
 `save_frame_clean` already uses).
 
-All 30 folders here already follow this exact convention, sliced from
+All 31 folders here already follow this exact convention, sliced from
 the user-supplied reference sheets in `assets/skins/mariana_*.png`
 (kept there as the source) — if another skin needs slicing from a
 similar sheet, redo the equivalent steps rather than looking for a
@@ -168,3 +168,16 @@ build tool here:
   tail legitimately spreading wider in that one pose — not a repeat of
   this bug. Re-ran Professora with `expected_idle=4` and kept the first
   2 poses.
+- `rapunzel`/Alberto's `pascal` (added 2026-09-17, from a themed pair the
+  user downloaded together to `Downloads/mariana_rapunzel_e_alberto_e_pascal/`):
+  same numbered-label contact-sheet convention as every sheet above,
+  alpha=0 background, extracted with the existing alpha pipeline
+  (`scripts/extract_rapunzel_pascal_2026-09-17.py`, reusing
+  `full_extract_alpha`/`save_frame_clean` unchanged) — no new extraction
+  technique needed. Both sheets segmented cleanly on the first attempt
+  (12/4/2 frame counts matched exactly) and passed a full-strip visual
+  review with no label bleed, fused limbs, or neighbor-frame overlap.
+  `rapunzel`'s source sheet is kept at `assets/skins/mariana_rapunzel.png`
+  like every other Mariana skin; `pascal`'s source sheet is not
+  committed to the repo, matching every other Alberto skin (only
+  Mariana's source sheets are kept under `assets/skins/`).

@@ -47,9 +47,9 @@ assert(new Set(nonFree.map((s) => s.price)).size === nonFree.length, 'every non-
 assert(
   JSON.stringify(sandbox.ALBERTO_SKIN_DEFS.map((s) => [s.id, s.price])) === JSON.stringify([
     ['normal', 0], ['anjo', 900], ['pijama', 1150], ['cowboy', 1400], ['ninja', 1650],
-    ['pirata', 1900], ['vampiro', 2150], ['diabinho', 2400], ['principe', 2700],
+    ['pirata', 1900], ['vampiro', 2150], ['diabinho', 2400], ['principe', 2700], ['pascal', 2950],
   ]),
-  'prices match exactly what the project owner specified 2026-09-16'
+  'prices match exactly what the project owner specified 2026-09-16 (+ pascal, 2026-09-17)'
 );
 // Note: several ids ARE deliberately reused across catalogs (e.g. both
 // have a "pirata"/"ninja"/"pijama"/"anjo") — that's harmless thematic

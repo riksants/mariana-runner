@@ -1664,6 +1664,8 @@
     flame: '<svg viewBox="0 0 24 24"><path d="M12 2c2 4-2 5-2 9a4 4 0 1 0 8 0c0-2-1-4-2-5 1 2 0 4-1 4a2 2 0 0 1-2-2c0-3 2-4-1-6z" fill="currentColor"/></svg>',
     halo: '<svg viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="6" ry="2.4" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M6 10c0 5 3 9 6 9s6-4 6-9" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>',
     ring: '<svg viewBox="0 0 24 24"><circle cx="12" cy="15" r="6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 9 9 3h6z" fill="currentColor"/></svg>',
+    hairlock: '<svg viewBox="0 0 24 24"><path d="M9 3c3 2 3 5 1 7 3 0 5 2 5 5 0 3-2 5-5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+    chameleon: '<svg viewBox="0 0 24 24"><path d="M3 14c2-3 5-4 8-3s5 1 7-1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M18 10c1.5-1 2.5.5 1 2s-3 .5-2-1" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="8" cy="11" r="1.1" fill="currentColor"/></svg>',
   };
 
   function skinCardStatus(id) {

@@ -44,7 +44,7 @@ assert(sandbox.SkinStore.isUnlocked('princesa') === false, 'princesa starts lock
 
 const skinOrder = sandbox.SKIN_DEFS.map((s) => s.id);
 assert(
-  JSON.stringify(skinOrder) === JSON.stringify(['normal', 'princesa', 'praia', 'mini', 'kawaii', 'volei', 'chef', 'cupido', 'pijama', 'vampira', 'fada', 'gotica', 'arabe', 'gatinha', 'macaca', 'professora', 'retro', 'cowgirl', 'sakura', 'bruxa', 'pirata', 'heroina', 'gold', 'diabinha', 'boneca', 'fenix', 'ninja', 'coelhinha', 'anjo', 'noiva']),
+  JSON.stringify(skinOrder) === JSON.stringify(['normal', 'princesa', 'praia', 'mini', 'kawaii', 'volei', 'chef', 'cupido', 'pijama', 'vampira', 'fada', 'gotica', 'arabe', 'gatinha', 'macaca', 'professora', 'retro', 'cowgirl', 'sakura', 'bruxa', 'pirata', 'heroina', 'gold', 'diabinha', 'boneca', 'fenix', 'ninja', 'coelhinha', 'anjo', 'noiva', 'rapunzel']),
   'wardrobe order matches SKIN_DEFS insertion order'
 );
 assert(sandbox.skinById('macaca').price === 2500, 'macaca costs 2500 coins');
