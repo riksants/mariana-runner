@@ -50,8 +50,21 @@
 // v15, 2026-09-13: added js/leaderboard.js (ranking global) ao shell. As
 // duas leituras do ranking são POST cross-origin, então o fetch handler
 // abaixo também as ignora — sem conexão o painel mostra o aviso de
-// indisponível e o jogo segue normalmente.)
-const CACHE_NAME = 'mariana-runner-v15';
+// indisponível e o jogo segue normalmente. v16, 2026-09-17: added the
+// Mariana Rapunzel + Alberto Pascal skins (js/skins.js + js/game.js
+// content changed, no new filenames) — a reminder that CACHE_NAME must
+// be bumped for ANY change to an already-precached file's bytes, not
+// just when a brand-new filename is added. Without this bump, the
+// browser's SW-update check sees sw.js itself byte-identical to what's
+// already installed and never runs, so the controllerchange->
+// location.reload() below (what makes an already-installed PWA pick up
+// a new release automatically, even without the player force-closing
+// the app) never fires — confirmed as the cause of a real "installed
+// PWA stuck on old skins list" report. Bumping this touches only the
+// Cache Storage entries this file manages; localStorage (coins,
+// unlocked/equipped skins, high score, achievements) and the Supabase
+// cloud save are untouched by it.
+const CACHE_NAME = 'mariana-runner-v16';
 const APP_SHELL = [
   './',
   './index.html',
