@@ -1685,7 +1685,7 @@
   function renderWardrobe() {
     wardrobeCoinsValue.textContent = String(coinBalance);
     const isAlberto = wardrobeTab === 'alberto';
-    const defs = isAlberto ? ALBERTO_SKIN_DEFS : SKIN_DEFS;
+    const defs = isAlberto ? ALBERTO_SKIN_DEFS_BY_PRICE : SKIN_DEFS_BY_PRICE;
     const statusFor = isAlberto ? albertoSkinCardStatus : skinCardStatus;
     const previewReady = isAlberto ? ALBERTO_SKIN_PREVIEW_READY : SKIN_PREVIEW_READY;
     const previewDir = isAlberto ? 'assets/sprites/skins/alberto' : 'assets/sprites/skins';

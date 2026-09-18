@@ -40,6 +40,14 @@ const SKIN_DEFS = [
   { id: 'rapunzel', name: 'Mariana Rapunzel', price: 2650, icon: 'hairlock' },
 ];
 
+// Wardrobe display order only: Normal first (price 0, sorts first anyway),
+// then every other skin cheapest-to-priciest. Derived from SKIN_DEFS so any
+// skin added to SKIN_DEFS above automatically lands in the right spot here
+// too — SKIN_DEFS itself (and its insertion order) is left untouched, since
+// other code (skinById, purchase, achievement counts) relies only on its
+// contents, not its order.
+const SKIN_DEFS_BY_PRICE = SKIN_DEFS.slice().sort((a, b) => a.price - b.price);
+
 const SKIN_STORAGE_KEYS = {
   coins: 'marianaRunnerCoins',
   unlocked: 'marianaRunnerUnlockedSkins',
@@ -111,6 +119,9 @@ const ALBERTO_SKIN_DEFS = [
   { id: 'principe',  name: 'Alberto Príncipe', price: 2700, icon: 'crown' },
   { id: 'pascal',    name: 'Alberto Pascal',   price: 2950, icon: 'chameleon' },
 ];
+
+// Same display-order derivation as SKIN_DEFS_BY_PRICE above, for Alberto's wardrobe.
+const ALBERTO_SKIN_DEFS_BY_PRICE = ALBERTO_SKIN_DEFS.slice().sort((a, b) => a.price - b.price);
 
 const ALBERTO_SKIN_STORAGE_KEYS = {
   unlocked: 'marianaRunnerAlbertoUnlockedSkins',
