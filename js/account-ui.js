@@ -35,6 +35,12 @@
   function setMessage(text, kind) {
     msgEl.textContent = text || '';
     msgEl.className = 'account-msg' + (kind ? ' account-msg--' + kind : '');
+    // Mensagem nova entra (opacity + leve subida) em vez de trocar seca.
+    if (text) {
+      // eslint-disable-next-line no-unused-expressions
+      void msgEl.offsetWidth;
+      msgEl.classList.add('is-new');
+    }
   }
 
   function setMode(next) {
@@ -61,13 +67,25 @@
     nickInput.value = '';
     passInput.value = '';
     confirmInput.value = '';
+    overlay.classList.remove('is-leaving');
     overlay.hidden = false;
     nickInput.focus();
   }
 
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Some com um fade curto (classe .is-leaving no CSS) em vez de piscar.
+  // O estado "fechado" (hidden) é o mesmo de antes, só chega 160ms depois.
   function closeOverlay() {
-    overlay.hidden = true;
     setBusy(false);
+    if (overlay.hidden || overlay.classList.contains('is-leaving')) return;
+    if (reduceMotion) { overlay.hidden = true; return; }
+    overlay.classList.add('is-leaving');
+    setTimeout(() => {
+      if (!overlay.classList.contains('is-leaving')) return;
+      overlay.classList.remove('is-leaving');
+      overlay.hidden = true;
+    }, 160);
   }
 
   // Reflete o estado da conta na tela inicial: ou o convite para entrar,

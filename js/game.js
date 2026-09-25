@@ -29,6 +29,8 @@
   const srAnnouncer = document.getElementById('sr-announcer');
   const achievementToast = document.getElementById('achievement-toast');
   const achievementToastName = document.getElementById('achievement-toast-name');
+  const achievementToastDesc = document.getElementById('achievement-toast-desc');
+  const hudHiscore = document.getElementById('hud-hiscore');
   const statusBadges = {
     shield: document.getElementById('status-shield'),
     star: document.getElementById('status-star'),
@@ -48,7 +50,21 @@
     weddingEnd: document.getElementById('overlay-wedding-end'),
   };
   const overlayWardrobe = document.getElementById('overlay-wardrobe');
-  const wardrobeGrid = document.getElementById('wardrobe-grid');
+  const wardrobeStage = document.getElementById('wardrobe-stage');
+  const wardrobeTrack = document.getElementById('wardrobe-track');
+  const wardrobeTabs = document.getElementById('wardrobe-tabs');
+  const wardrobeCoinsDelta = document.getElementById('wardrobe-coins-delta');
+  const btnWrPrev = document.getElementById('btn-wr-prev');
+  const btnWrNext = document.getElementById('btn-wr-next');
+  const btnWrAction = document.getElementById('btn-wr-action');
+  const wrIndexEl = document.getElementById('wr-index');
+  const wrTotalEl = document.getElementById('wr-total');
+  const wrSwapEl = document.getElementById('wr-swap');
+  const wrNameEl = document.getElementById('wr-name');
+  const wrPriceEl = document.getElementById('wr-price');
+  const wrTagEl = document.getElementById('wr-tag');
+  const wrMsgEl = document.getElementById('wr-msg');
+  const characterSelect = document.getElementById('character-select');
   const wardrobeCoinsValue = document.getElementById('wardrobe-coins-value');
   const menuCoinsValue = document.getElementById('menu-coins-value');
   const menuRecordValue = document.getElementById('menu-record-value');
@@ -66,6 +82,8 @@
   const btnPause = document.getElementById('btn-pause');
   const btnMute = document.getElementById('btn-mute');
   const finalScoreEl = document.getElementById('final-score');
+  const finalRecordEl = document.getElementById('final-record');
+  const finalCoinsEl = document.getElementById('final-coins');
   const weddingEndScoreEl = document.getElementById('wedding-end-score');
   const recordBadge = document.getElementById('record-badge');
   const loadingDots = document.getElementById('loading-dots');
@@ -445,6 +463,9 @@
   let distanceSinceLastCoinCluster = 0;
   let nextCoinGap = 0;
   let coinBalance = SkinStore.getCoins();
+  // Moedas pegas nesta partida — só para o cartão de Game Over. É um
+  // espelho de exibição: o saldo de verdade continua em SkinStore.
+  let runCoins = 0;
 
   let shieldActive = false;
   let doubleJumpActive = false;
@@ -1174,7 +1195,9 @@
     // Único ponto onde o 2x moedas age: o valor da moeda coletada.
     // Nada muda na quantidade, posição ou frequência das moedas.
     coinBalance = SkinStore.addCoins(coinMultiplier);
+    runCoins += coinMultiplier;
     updateCoinsHud();
+    bump(hudCoinsValue);
     AudioMgr.coin();
     Particles.dust(x, y, { count: 4, color: 'rgba(230,180,60,' });
     const lifetimeCoins = AchievementStore.addLifetimeCoins(1);
@@ -1208,6 +1231,7 @@
     highScore = flooredScore;
     localStorage.setItem('marianaRunnerHighScore', String(highScore));
     updateHud();
+    bump(hudHiscore);
     const px = PLAYER_RIGHT_X - currentHitbox().width / 2;
     Particles.burst(px, player.y - currentGirlH() * 0.6);
     AudioMgr.record();
@@ -1229,32 +1253,36 @@
   let achievementToastQueue = [];
   let achievementToastShowing = false;
   let achievementToastTimer = null;
-  function showAchievementToast(name) {
-    achievementToastQueue.push(name);
+  function showAchievementToast(def) {
+    achievementToastQueue.push(def);
     if (!achievementToastShowing) advanceAchievementToastQueue();
   }
   function advanceAchievementToastQueue() {
-    const name = achievementToastQueue.shift();
-    if (name === undefined) { achievementToastShowing = false; return; }
+    const def = achievementToastQueue.shift();
+    if (def === undefined) { achievementToastShowing = false; return; }
     achievementToastShowing = true;
-    achievementToastName.textContent = name.toUpperCase();
+    achievementToastName.textContent = def.name.toUpperCase();
+    achievementToastDesc.textContent = def.desc || '';
     achievementToast.hidden = false;
-    requestAnimationFrame(() => achievementToast.classList.add('is-visible'));
+    // Two frames: the first lays out the now-displayed toast at its
+    // hidden pose, the second flips to .is-visible so the transition
+    // (and the staggered icon/title/name/desc entrance) actually plays.
+    requestAnimationFrame(() => requestAnimationFrame(() => achievementToast.classList.add('is-visible')));
     clearTimeout(achievementToastTimer);
     achievementToastTimer = setTimeout(() => {
       achievementToast.classList.remove('is-visible');
       setTimeout(() => {
         achievementToast.hidden = true;
         advanceAchievementToastQueue();
-      }, 260);
-    }, 2200);
+      }, 320);
+    }, 2600);
   }
 
   function unlockAchievement(id) {
     if (!AchievementStore.unlock(id)) return;
     const def = achievementById(id);
     if (!def) return;
-    showAchievementToast(def.name);
+    showAchievementToast(def);
     AudioMgr.achievement();
     announce(`Conquista desbloqueada: ${def.name}.`);
   }
@@ -1323,6 +1351,10 @@
   // State machine / UI sync
   // ---------------------------------------------------------
   function setState(next) {
+    // First reveal of the start screen: lets the scenery settle in from
+    // the loading screen's plain paper (CSS #game-frame.is-booted). Only
+    // ever added, never removed — it's a one-time boot entrance.
+    if (next === 'start' && state === 'loading') frame.classList.add('is-booted');
     state = next;
     overlays.loading.hidden = next !== 'loading';
     overlays.start.hidden = next !== 'start';
@@ -1356,6 +1388,47 @@
     // eslint-disable-next-line no-unused-expressions
     void hudScoreValue.offsetWidth; // restart CSS animation
     hudScoreValue.classList.add('pulse');
+  }
+
+  // Restarts a one-shot CSS class animation (remove -> reflow -> add).
+  // Used for every short "reaction" in the UI: coin counter bump, button
+  // pop/shake, info swap. The class is left on afterwards — harmless,
+  // since the animation only plays again on the next restart.
+  function restartAnim(el, cls) {
+    el.classList.remove(cls);
+    // eslint-disable-next-line no-unused-expressions
+    void el.offsetWidth;
+    el.classList.add(cls);
+  }
+
+  // The HUD coin/record "bump" (1 -> 1.08 -> 1). Runs mid-gameplay, so it
+  // uses the Web Animations API instead of restartAnim(): no forced
+  // reflow per collected coin, and a new bump simply replaces the last.
+  const BUMP_FRAMES = [
+    { transform: 'scale(1)' },
+    { transform: 'translateY(-1px) scale(1.08)', offset: 0.4 },
+    { transform: 'scale(1)' },
+  ];
+  function bump(el) {
+    if (REDUCE_MOTION) return;
+    if (!el.animate) { restartAnim(el, 'is-bump'); return; }
+    if (el._bump) el._bump.cancel();
+    el._bump = el.animate(BUMP_FRAMES, { duration: 220, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' });
+  }
+
+  // Short one-shot fade/slide-out before a panel is actually hidden, so
+  // closing never "blinks". Resolves the hide synchronously when motion
+  // is reduced.
+  function hideWithExit(el, onHidden) {
+    if (REDUCE_MOTION) { el.hidden = true; if (onHidden) onHidden(); return; }
+    el.classList.add('is-leaving');
+    setTimeout(() => {
+      // Reopened during the exit (the opener strips .is-leaving): keep it.
+      if (!el.classList.contains('is-leaving')) return;
+      el.classList.remove('is-leaving');
+      el.hidden = true;
+      if (onHidden) onHidden();
+    }, 160);
   }
 
   // ---------------------------------------------------------
@@ -1496,6 +1569,8 @@
     coinMultiplier = 1;
     coinBonusTimer = 0;
     obstacleStreak = 0;
+    runCoins = 0;
+    cancelScoreCountUp();
     recordBrokenThisRun = false;
     pendingWedding = false;
     weddingPhase = null;
@@ -1532,7 +1607,9 @@
     AudioMgr.hit();
     setTimeout(() => AudioMgr.gameOver(), 120);
 
-    finalScoreEl.textContent = String(finalScore);
+    countUpScore(finalScore);
+    finalRecordEl.textContent = highScore.toLocaleString('pt-BR');
+    finalCoinsEl.textContent = '+' + runCoins;
     recordBadge.hidden = !isRecord;
     updateHud();
 
@@ -1544,6 +1621,31 @@
     } else {
       announce(`Fim de jogo. Pontuação: ${finalScore}.`);
     }
+  }
+
+  // Game Over score counts up from 0 in ~0.6s alongside the card's
+  // entrance — purely a readout of the already-final number (endGame
+  // computed and saved it first). Restarting never waits on it: the
+  // overlay click / Space call startGame() immediately, which cancels it.
+  let scoreCountRaf = 0;
+  function cancelScoreCountUp() {
+    if (scoreCountRaf) cancelAnimationFrame(scoreCountRaf);
+    scoreCountRaf = 0;
+  }
+  function countUpScore(target) {
+    cancelScoreCountUp();
+    const format = (n) => n.toLocaleString('pt-BR');
+    if (REDUCE_MOTION || target <= 0) { finalScoreEl.textContent = format(target); return; }
+    const t0 = performance.now();
+    const DURATION = 620;
+    finalScoreEl.textContent = '0';
+    const step = (now) => {
+      const t = Math.min(1, (now - t0) / DURATION);
+      const eased = 1 - Math.pow(1 - t, 3);
+      finalScoreEl.textContent = format(Math.round(target * eased));
+      scoreCountRaf = t < 1 ? requestAnimationFrame(step) : 0;
+    };
+    scoreCountRaf = requestAnimationFrame(step);
   }
 
   function updateHud() {
@@ -1559,18 +1661,21 @@
     wardrobeCoinsValue.textContent = String(coinBalance);
   }
 
-  // renderWardrobe() populates #wardrobe-grid — defined further down
-  // (Wardrobe card rendering section). Declared with `function` there
-  // so it's hoisted and callable from here regardless of file order,
-  // exactly like every other forward reference already in this file
-  // (e.g. AudioMgr, Particles).
+  // buildWardrobe() fills the carousel — defined further down (Guarda-
+  // Roupa section). Declared with `function` there so it's hoisted and
+  // callable from here regardless of file order, exactly like every
+  // other forward reference already in this file (e.g. AudioMgr).
   function openWardrobe() {
-    renderWardrobe();
+    overlayWardrobe.classList.remove('is-leaving');
     overlayWardrobe.hidden = false;
+    // Built AFTER un-hiding: the carousel's sizes come from the stage's
+    // real box (container query units), which only exists once shown.
+    buildWardrobe(true);
   }
 
   function closeWardrobe() {
-    overlayWardrobe.hidden = true;
+    if (overlayWardrobe.hidden || overlayWardrobe.classList.contains('is-leaving')) return;
+    hideWithExit(overlayWardrobe);
   }
 
   btnWardrobe.addEventListener('click', (e) => {
@@ -1593,6 +1698,7 @@
   function updateCharacterSelectUI() {
     btnCharMariana.classList.toggle('is-active', playableCharacter === 'mariana');
     btnCharAlberto.classList.toggle('is-active', playableCharacter === 'alberto');
+    characterSelect.dataset.active = playableCharacter;
   }
 
   function setPlayableCharacter(id) {
@@ -1619,7 +1725,8 @@
     btnWardrobeTabAlberto.classList.toggle('is-active', wardrobeTab === 'alberto');
     btnWardrobeTabMariana.setAttribute('aria-selected', String(wardrobeTab === 'mariana'));
     btnWardrobeTabAlberto.setAttribute('aria-selected', String(wardrobeTab === 'alberto'));
-    renderWardrobe();
+    buildWardrobe(true);
+    restartAnim(wardrobeTrack, 'is-refresh');
   }
 
   btnWardrobeTabMariana.addEventListener('click', (e) => {
@@ -1680,61 +1787,304 @@
     return coinBalance >= albertoSkinById(id).price ? 'buyable' : 'locked';
   }
 
-  const SKIN_STATUS_LABEL = { equipped: 'EQUIPADA', owned: 'EQUIPAR', buyable: 'COMPRAR', locked: 'BLOQUEADA' };
+  // ---------------------------------------------------------
+  // Guarda-Roupa: carrossel
+  // ---------------------------------------------------------
+  // Same data and the same store calls as the old card grid (purchase /
+  // setEquipped / loadFrames / all_skins achievement) — only the
+  // presentation changed. Each skin is one item; the active one sits in
+  // the center and every other item gets a ROLE from its circular
+  // distance to it (is-prev / is-next / is-far-* / is-off-*). Changing
+  // the active index just reassigns roles, and CSS animates every item's
+  // transform/opacity/filter at once (650ms, cubic-bezier(0.4,0,0.2,1)).
+  // A lock (wrAnimating) swallows new navigation until the swap finishes,
+  // so rapid taps can never stack transitions or desync the index.
+  const WR_SWAP_MS = 650;
+  const WR_ROLES = ['is-center', 'is-prev', 'is-next', 'is-far-prev', 'is-far-next', 'is-off-prev', 'is-off-next'];
+  const WR_LOCK_SVG = '<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="1.5" fill="currentColor"/><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="2.4"/></svg>';
+  const WR_CHECK_SVG = '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square"/></svg>';
+  const WR_COIN_SVG = '<svg class="stat-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="#f0c04a" stroke="#2b2b2b" stroke-width="2"/><line x1="12" y1="8" x2="12" y2="16" stroke="#c99a2e" stroke-width="2" stroke-linecap="round"/></svg>';
 
-  function renderWardrobe() {
-    wardrobeCoinsValue.textContent = String(coinBalance);
-    const isAlberto = wardrobeTab === 'alberto';
-    const defs = isAlberto ? ALBERTO_SKIN_DEFS_BY_PRICE : SKIN_DEFS_BY_PRICE;
-    const statusFor = isAlberto ? albertoSkinCardStatus : skinCardStatus;
-    const previewReady = isAlberto ? ALBERTO_SKIN_PREVIEW_READY : SKIN_PREVIEW_READY;
-    const previewDir = isAlberto ? 'assets/sprites/skins/alberto' : 'assets/sprites/skins';
-    const previewFile = isAlberto ? 'cat_idle_01.png' : 'girl_idle_01.png';
-    const fallbackPreview = isAlberto ? 'assets/sprites/cat_idle_01.png' : 'assets/sprites/girl_idle_01.png';
-    wardrobeGrid.innerHTML = defs.map((skin) => {
-      const status = statusFor(skin.id);
-      const btnClass = status === 'equipped' ? 'is-equipped' : status === 'buyable' ? 'is-buyable' : '';
-      const disabled = (status === 'equipped' || status === 'locked') ? 'disabled' : '';
-      const priceLabel = skin.price > 0 ? `${skin.price} MOEDAS` : 'GRÁTIS';
-      const previewSrc = previewReady[skin.id]
-        ? `${previewDir}/${skin.id}/${previewFile}`
-        : fallbackPreview;
-      return `
-        <div class="skin-card">
-          <div class="skin-card-preview">
-            <img src="${previewSrc}" alt="${skin.name}">
-            <span class="skin-card-badge">${SKIN_ICON_SVG[skin.icon]}</span>
-          </div>
-          <div class="skin-card-name">${skin.name.toUpperCase()}</div>
-          <div class="skin-card-price">${priceLabel}</div>
-          <button type="button" class="skin-card-btn ${btnClass}" data-action="${status}" data-skin-id="${skin.id}" data-character="${wardrobeTab}" ${disabled}>${SKIN_STATUS_LABEL[status]}</button>
-        </div>`;
-    }).join('');
+  let wrActive = 0;
+  let wrAnimating = false;
+  let wrLockTimer = null;
+  let wrMsgTimer = null;
+  let wrItems = [];
+  let wrStamp = null;
+
+  function wardrobeDefs() {
+    return wardrobeTab === 'alberto' ? ALBERTO_SKIN_DEFS_BY_PRICE : SKIN_DEFS_BY_PRICE;
   }
 
-  wardrobeGrid.addEventListener('click', (e) => {
-    const btn = e.target.closest('.skin-card-btn');
-    if (!btn || btn.disabled) return;
-    const id = btn.dataset.skinId;
-    const action = btn.dataset.action;
-    const isAlberto = btn.dataset.character === 'alberto';
+  function wardrobeStatus(id) {
+    return wardrobeTab === 'alberto' ? albertoSkinCardStatus(id) : skinCardStatus(id);
+  }
+
+  function wardrobePreviewSrc(skin) {
+    const isAlberto = wardrobeTab === 'alberto';
+    const ready = isAlberto ? ALBERTO_SKIN_PREVIEW_READY : SKIN_PREVIEW_READY;
+    if (!ready[skin.id]) return isAlberto ? 'assets/sprites/cat_idle_01.png' : 'assets/sprites/girl_idle_01.png';
+    return isAlberto
+      ? `assets/sprites/skins/alberto/${skin.id}/cat_idle_01.png`
+      : `assets/sprites/skins/${skin.id}/girl_idle_01.png`;
+  }
+
+  // Signed shortest distance from the active index on a ring of n.
+  function wardrobeOffset(i, n) {
+    let d = i - wrActive;
+    if (d > n / 2) d -= n;
+    if (d <= -n / 2) d += n;
+    return d;
+  }
+
+  function roleFor(d) {
+    if (d === 0) return 'is-center';
+    if (d === -1) return 'is-prev';
+    if (d === 1) return 'is-next';
+    if (d === -2) return 'is-far-prev';
+    if (d === 2) return 'is-far-next';
+    return d < 0 ? 'is-off-prev' : 'is-off-next';
+  }
+
+  const pad2 = (n) => String(n).padStart(2, '0');
+
+  function buildWardrobe(focusEquipped) {
+    const defs = wardrobeDefs();
+    if (focusEquipped) {
+      const store = wardrobeTab === 'alberto' ? AlbertoSkinStore : SkinStore;
+      wrActive = Math.max(0, defs.findIndex((skin) => skin.id === store.getEquipped()));
+    }
+    wrActive = Math.min(wrActive, defs.length - 1);
+    wardrobeStage.classList.toggle('is-alberto', wardrobeTab === 'alberto');
+    wardrobeTabs.dataset.active = wardrobeTab;
+    wardrobeCoinsValue.textContent = String(coinBalance);
+    wardrobeTrack.innerHTML = defs.map((skin, i) => `
+      <button type="button" class="wr-item" data-index="${i}" tabindex="-1" aria-label="${skin.name}">
+        <span class="wr-shadow"></span>
+        <img src="${wardrobePreviewSrc(skin)}" alt="" draggable="false" decoding="async">
+        <span class="wr-badge" aria-hidden="true"></span>
+      </button>`).join('');
+    wrItems = Array.from(wardrobeTrack.children);
+    wrItems.forEach((el) => { el.dataset.d = ''; });
+    wrStamp = document.createElement('span');
+    wrStamp.className = 'wr-stamp';
+    wrStamp.setAttribute('aria-hidden', 'true');
+    wrStamp.textContent = 'DESBLOQUEADA!';
+    wardrobeTrack.appendChild(wrStamp);
+    wrTotalEl.textContent = pad2(defs.length);
+    clearTimeout(wrLockTimer);
+    wrAnimating = false;
+    hideWardrobeMsg(true);
+    applyWardrobeRoles(true);
+    updateWardrobeItemBadges();
+    updateWardrobeInfo(false);
+    preloadWardrobeNeighbors();
+  }
+
+  // snapAll: first layout after (re)building — items take their places
+  // with no transition. Otherwise any item whose ring distance jumped by
+  // more than one step (a wrap-around on a short list, or a far jump)
+  // snaps instead of sliding across the stage behind the others.
+  function applyWardrobeRoles(snapAll) {
+    const n = wrItems.length;
+    const snapped = [];
+    wrItems.forEach((el, i) => {
+      const d = wardrobeOffset(i, n);
+      const prev = el.dataset.d === '' ? null : Number(el.dataset.d);
+      const offstage = (x) => Math.abs(x) > 2;
+      const jump = prev === null || (Math.abs(d - prev) > 2 && !(offstage(prev) && offstage(d) && Math.sign(prev) === Math.sign(d)));
+      if (snapAll || jump) { el.classList.add('is-snap'); snapped.push(el); }
+      el.dataset.d = String(d);
+      WR_ROLES.forEach((r) => el.classList.remove(r));
+      el.classList.add(roleFor(d));
+      el.setAttribute('aria-hidden', String(d !== 0));
+    });
+    if (snapped.length) {
+      // eslint-disable-next-line no-unused-expressions
+      void wardrobeTrack.offsetWidth;
+      snapped.forEach((el) => el.classList.remove('is-snap'));
+    }
+  }
+
+  function updateWardrobeItemBadges() {
+    const defs = wardrobeDefs();
+    wrItems.forEach((el, i) => {
+      const status = wardrobeStatus(defs[i].id);
+      const locked = status === 'buyable' || status === 'locked';
+      el.classList.toggle('is-locked', locked);
+      el.classList.toggle('is-equipped', status === 'equipped');
+      el.querySelector('.wr-badge').innerHTML = status === 'equipped' ? WR_CHECK_SVG : locked ? WR_LOCK_SVG : '';
+    });
+  }
+
+  function updateWardrobeInfo(animate) {
+    const skin = wardrobeDefs()[wrActive];
+    if (!skin) return;
+    const status = wardrobeStatus(skin.id);
+    wrIndexEl.textContent = pad2(wrActive + 1);
+    // Same per-skin glyph the old cards carried in their corner badge.
+    wrNameEl.innerHTML = `<span class="wr-icon" aria-hidden="true">${SKIN_ICON_SVG[skin.icon] || ''}</span><span>${skin.name.toUpperCase()}</span>`;
+    const owned = status === 'equipped' || status === 'owned';
+    wrPriceEl.classList.toggle('is-owned', owned);
+    if (owned) wrPriceEl.textContent = skin.price > 0 ? 'NO SEU GUARDA-ROUPA' : 'GRÁTIS';
+    else wrPriceEl.innerHTML = `${WR_COIN_SVG}<span>${skin.price.toLocaleString('pt-BR')}</span>`;
+    wrTagEl.hidden = status !== 'equipped';
+    wrTagEl.textContent = 'EQUIPADA';
+
+    const label = { equipped: 'EQUIPADA', owned: 'EQUIPAR', buyable: 'COMPRAR', locked: 'COMPRAR' }[status];
+    btnWrAction.textContent = label;
+    btnWrAction.dataset.action = status;
+    btnWrAction.classList.toggle('is-equipped', status === 'equipped');
+    btnWrAction.classList.toggle('is-buyable', status === 'buyable');
+    btnWrAction.classList.toggle('is-locked', status === 'locked');
+    // aria-disabled (not the disabled attribute): the locked state still
+    // has to answer a tap with the "faltam N moedas" message.
+    const inert = status === 'equipped' || status === 'locked';
+    btnWrAction.setAttribute('aria-disabled', String(inert));
+    btnWrAction.setAttribute('aria-label', status === 'locked'
+      ? `Comprar ${skin.name}: faltam ${skin.price - coinBalance} moedas`
+      : `${label} ${skin.name}`);
+
+    if (animate) restartAnim(wrSwapEl, 'is-swapping');
+  }
+
+  // Decodes the images that are about to become visible (the active one
+  // and two on each side) ahead of time, so a swap never shows a blank
+  // frame. The preview files themselves were already fetched at boot by
+  // loadSkinPreviews(); decode() just makes sure they're ready to paint.
+  function preloadWardrobeNeighbors() {
+    const n = wrItems.length;
+    for (let d = -3; d <= 3; d++) {
+      const el = wrItems[(wrActive + d + n * 4) % n];
+      const img = el && el.querySelector('img');
+      if (img && img.decode) img.decode().catch(() => {});
+    }
+  }
+
+  function lockWardrobe() {
+    wrAnimating = true;
+    clearTimeout(wrLockTimer);
+    wrLockTimer = setTimeout(() => { wrAnimating = false; }, REDUCE_MOTION ? 120 : WR_SWAP_MS);
+  }
+
+  function goToWardrobe(index) {
+    const n = wrItems.length;
+    if (wrAnimating || n < 2) return;
+    const next = ((index % n) + n) % n;
+    if (next === wrActive) return;
+    lockWardrobe();
+    wrActive = next;
+    hideWardrobeMsg();
+    applyWardrobeRoles(false);
+    updateWardrobeInfo(true);
+    preloadWardrobeNeighbors();
+    AudioMgr.uiHover();
+  }
+
+  function moveWardrobe(dir) { goToWardrobe(wrActive + dir); }
+
+  function showWardrobeMsg(text) {
+    clearTimeout(wrMsgTimer);
+    wrMsgEl.textContent = text;
+    wrMsgEl.classList.add('is-visible');
+    wrMsgTimer = setTimeout(() => hideWardrobeMsg(), 2200);
+  }
+
+  function hideWardrobeMsg(immediate) {
+    clearTimeout(wrMsgTimer);
+    wrMsgEl.classList.remove('is-visible');
+    if (immediate) wrMsgEl.textContent = '';
+  }
+
+  function celebrateWardrobeItem(withStamp) {
+    const el = wrItems[wrActive];
+    if (el) restartAnim(el, 'is-celebrate');
+    if (withStamp && wrStamp) restartAnim(wrStamp, 'is-live');
+  }
+
+  function showCoinDelta(amount) {
+    wardrobeCoinsDelta.textContent = `-${amount.toLocaleString('pt-BR')}`;
+    restartAnim(wardrobeCoinsDelta, 'is-live');
+    bump(wardrobeCoinsValue);
+  }
+
+  btnWrPrev.addEventListener('click', (e) => { e.stopPropagation(); moveWardrobe(-1); });
+  btnWrNext.addEventListener('click', (e) => { e.stopPropagation(); moveWardrobe(1); });
+
+  // Tapping a side item brings it to the center.
+  wardrobeTrack.addEventListener('click', (e) => {
+    const item = e.target.closest('.wr-item');
+    if (!item || item.classList.contains('is-center')) return;
+    goToWardrobe(Number(item.dataset.index));
+  });
+
+  // Swipe on the stage (touch or mouse drag): one step per gesture.
+  let wrSwipeX = null;
+  wardrobeStage.addEventListener('pointerdown', (e) => { wrSwipeX = e.clientX; }, { passive: true });
+  wardrobeStage.addEventListener('pointerup', (e) => {
+    if (wrSwipeX === null) return;
+    const dx = e.clientX - wrSwipeX;
+    wrSwipeX = null;
+    if (Math.abs(dx) > 40) moveWardrobe(dx < 0 ? 1 : -1);
+  }, { passive: true });
+  wardrobeStage.addEventListener('pointercancel', () => { wrSwipeX = null; }, { passive: true });
+
+  // Same purchase/equip rules as before, byte for byte: purchase() only
+  // unlocks (never auto-equips), equipping kicks off the lazy full-frame
+  // load, and the all_skins achievement check is unchanged.
+  btnWrAction.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const skin = wardrobeDefs()[wrActive];
+    if (!skin) return;
+    const isAlberto = wardrobeTab === 'alberto';
     const store = isAlberto ? AlbertoSkinStore : SkinStore;
     const loadFrames = isAlberto ? loadAlbertoSkinFullFrames : loadSkinFullFrames;
+    const action = wardrobeStatus(skin.id);
     if (action === 'buyable') {
-      const res = store.purchase(id);
+      const res = store.purchase(skin.id);
       if (res.ok) {
         coinBalance = SkinStore.getCoins(); // shared coin balance regardless of which wardrobe spent it
         AudioMgr.powerup();
         updateCoinsHud();
+        showCoinDelta(skin.price);
         if (!isAlberto && SkinStore.getUnlocked().length === SKIN_DEFS.length) unlockAchievement('all_skins');
+        updateWardrobeItemBadges();
+        updateWardrobeInfo(false);
+        restartAnim(btnWrAction, 'is-pop');
+        celebrateWardrobeItem(true);
+        announce(`${skin.name} desbloqueada.`);
       }
     } else if (action === 'owned') {
-      store.setEquipped(id);
-      loadFrames(id); // fire-and-forget: lazy full-cycle load, see sprites.js
+      store.setEquipped(skin.id);
+      loadFrames(skin.id); // fire-and-forget: lazy full-cycle load, see sprites.js
       AudioMgr.uiClick();
+      updateWardrobeItemBadges();
+      updateWardrobeInfo(false);
+      restartAnim(btnWrAction, 'is-pop');
+      celebrateWardrobeItem(false);
+      announce(`${skin.name} equipada.`);
+    } else if (action === 'locked') {
+      const missing = skin.price - coinBalance;
+      restartAnim(btnWrAction, 'is-shake');
+      showWardrobeMsg(`Faltam ${missing.toLocaleString('pt-BR')} moedas`);
+      AudioMgr.land();
     }
-    renderWardrobe();
   });
+
+  // While the wardrobe is open its keys are its own: arrows browse,
+  // Escape closes, and Space/ArrowUp no longer start a run underneath
+  // the panel. Capture phase on window, same pattern account-ui.js uses.
+  window.addEventListener('keydown', (e) => {
+    if (overlayWardrobe.hidden) return;
+    if (e.code === 'ArrowLeft') { e.preventDefault(); moveWardrobe(-1); }
+    else if (e.code === 'ArrowRight') { e.preventDefault(); moveWardrobe(1); }
+    else if (e.code === 'Escape') { e.preventDefault(); AudioMgr.uiClick(); closeWardrobe(); }
+    else if (e.code === 'Space' || e.code === 'ArrowUp') {
+      // Let Space still press a focused button (native activation).
+      if (!(document.activeElement && document.activeElement.tagName === 'BUTTON')) e.preventDefault();
+    } else return;
+    e.stopPropagation();
+  }, true);
 
   // ---------------------------------------------------------
   // Update
@@ -2349,13 +2699,131 @@
     ctx.drawImage(img, x, y, portal.drawW, portal.drawH);
   }
 
+  // ---------- Tela inicial: profundidade pelo ponteiro ----------
+  // Desktop only (fine pointer + hover) and never with reduced motion.
+  // A few game units of offset on the far layers — mountains more than
+  // clouds, the same depth order the gameplay parallax already uses
+  // (clouds scroll at 0.12x, mountains at 0.28x) — while the ground and
+  // the characters stay put. The DOM title/sign get the same smoothed
+  // value through --mpx/--mpy. With the pointer at rest everything is
+  // exactly the plain drawBackground() picture.
+  const menuParallax = { x: 0, y: 0, tx: 0, ty: 0, wx: 0, wy: 0 };
+  const finePointerQuery = window.matchMedia ? window.matchMedia('(hover: hover) and (pointer: fine)') : null;
+  window.addEventListener('pointermove', (e) => {
+    if (state !== 'start' || REDUCE_MOTION || !finePointerQuery || !finePointerQuery.matches) return;
+    menuParallax.tx = e.clientX / window.innerWidth - 0.5;
+    menuParallax.ty = e.clientY / window.innerHeight - 0.5;
+  }, { passive: true });
+  document.addEventListener('mouseleave', () => { menuParallax.tx = 0; menuParallax.ty = 0; });
+
+  function updateMenuParallax(dt) {
+    const k = Math.min(1, dt * 5);
+    menuParallax.x += (menuParallax.tx - menuParallax.x) * k;
+    menuParallax.y += (menuParallax.ty - menuParallax.y) * k;
+    if (Math.abs(menuParallax.x - menuParallax.wx) > 0.001 || Math.abs(menuParallax.y - menuParallax.wy) > 0.001) {
+      menuParallax.wx = menuParallax.x;
+      menuParallax.wy = menuParallax.y;
+      overlays.start.style.setProperty('--mpx', menuParallax.x.toFixed(4));
+      overlays.start.style.setProperty('--mpy', menuParallax.y.toFixed(4));
+    }
+  }
+
+  function drawStartBackground() {
+    const gY = H - GROUND_TILE_H;
+    const biome = activeBiome();
+    const savedMountainX = mountainScrollX;
+    mountainScrollX = savedMountainX - menuParallax.x * 7;
+    drawBiomeSkyAndBackdrop(biome, gY);
+    mountainScrollX = savedMountainX;
+    ctx.save();
+    ctx.translate(-menuParallax.x * 4, -menuParallax.y * 3);
+    drawClouds(biome);
+    ctx.restore();
+    drawBiomeGround(biome, gY);
+  }
+
+  // ---------- Encontro no altar: enquadramento ----------
+  // A camera over the UNCHANGED scene: same sprites, same phase order and
+  // timers, same four hearts (spawnKissHeart). Everything below is a pure
+  // function of the existing weddingPhaseIndex/weddingPhaseTimer, so it
+  // has no state of its own, freezes together with the tableau on
+  // 'weddingEnd', and is exactly identity (scale 1, no bars, no
+  // vignette) on the first 'wedding' frame — the cutover from the portal
+  // loading screen (drawWeddingScene() with no camera) stays seamless.
+  // Mirrors the per-phase durations updateWeddingScene() already uses.
+  function weddingPhaseLength(phase) {
+    const frames = WEDDING_PHASE_FRAME_COUNT[phase] * WEDDING_PHASE_FRAME_DURATION[phase];
+    if (phase === 'idle') return WEDDING_IDLE_HOLD_DURATION;
+    if (phase === 'walk') return WEDDING_WALK_DURATION;
+    if (phase === 'finalTogether') return frames + WEDDING_FINAL_HOLD_EXTRA;
+    return frames;
+  }
+
+  function weddingSceneSeconds(uptoIndex) {
+    let t = 0;
+    for (let i = 0; i < uptoIndex; i++) t += weddingPhaseLength(WEDDING_WALK_PHASES[i]);
+    return t;
+  }
+
+  const easeInOutSine = (t) => 0.5 - 0.5 * Math.cos(Math.PI * Math.min(1, Math.max(0, t)));
+
+  function weddingCamera() {
+    const focusX = weddingGroomWorldX() - currentGirlH() * 0.3;
+    const focusY = GROUND_Y - currentGirlH() * 0.55;
+    if (!weddingPhase) return { s: 1, fx: focusX, fy: focusY, bars: 0, vignette: 0 };
+    const t = weddingSceneSeconds(weddingPhaseIndex)
+      + Math.min(weddingPhaseTimer, weddingPhaseLength(weddingPhase));
+    const arrive = weddingSceneSeconds(WEDDING_WALK_PHASES.indexOf('stop'));
+    const lastKiss = weddingSceneSeconds(WEDDING_WALK_PHASES.indexOf('finalTogether'));
+    if (REDUCE_MOTION) return { s: 1, fx: focusX, fy: focusY, bars: 1, vignette: 0.12 };
+    // 1 -> 1.035 while she walks up, then -> 1.075 across the pause and
+    // the four kisses; holds from the final pose on.
+    const s = t <= arrive
+      ? 1 + 0.035 * easeInOutSine(t / arrive)
+      : 1.035 + 0.04 * easeInOutSine((t - arrive) / (lastKiss - arrive));
+    return {
+      s,
+      fx: focusX,
+      fy: focusY,
+      bars: easeInOutSine(t / 1.1),
+      vignette: 0.14 * easeInOutSine((t - arrive) / (lastKiss - arrive)),
+    };
+  }
+
+  // Screen-space framing drawn on top of the camera: thin ink letterbox
+  // bars and a soft warm edge falloff that deepens as the kisses play —
+  // the background "leans in" without a single pixel of the art or the
+  // sprites being recolored.
+  function drawWeddingFraming(cam) {
+    const cw = canvas.width;
+    const ch = canvas.height;
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    if (cam.vignette > 0.001) {
+      const r = Math.hypot(cw, ch) / 2;
+      const g = ctx.createRadialGradient(cw / 2, ch * 0.55, r * 0.45, cw / 2, ch * 0.55, r);
+      g.addColorStop(0, 'rgba(60,36,24,0)');
+      g.addColorStop(1, `rgba(60,36,24,${cam.vignette.toFixed(3)})`);
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, cw, ch);
+    }
+    if (cam.bars > 0.001) {
+      const barH = Math.round(ch * 0.055 * cam.bars);
+      ctx.fillStyle = '#2b2b2b';
+      ctx.fillRect(0, 0, cw, barH);
+      ctx.fillRect(0, ch - barH, cw, barH);
+    }
+    ctx.restore();
+  }
+
   function render() {
     const shake = ScreenShake.offset();
     ctx.save();
     ctx.translate(shake.x, shake.y);
+    let particlesDrawn = false;
 
     if (state === 'start') {
-      drawBackground();
+      drawStartBackground();
       drawDecor();
       // Alberto-as-main renders solo — drawPlayer() already switches to
       // his own frames below; skipping drawCat() here is what keeps him
@@ -2378,6 +2846,11 @@
       // being called the moment state left 'wedding', so weddingPhase
       // stays on finalTogether's last frame — nothing to redraw
       // differently here).
+      const cam = weddingCamera();
+      ctx.save();
+      ctx.translate(cam.fx, cam.fy);
+      ctx.scale(cam.s, cam.s);
+      ctx.translate(-cam.fx, -cam.fy);
       drawWeddingScene();
       if (WEDDING_SOLO_PHASES.has(weddingPhase)) {
         drawGroomIdle();
@@ -2385,6 +2858,11 @@
       } else if (weddingPhase) {
         drawWeddingCouple();
       }
+      // Hearts live in the same camera space as the couple they rise from.
+      Particles.draw(ctx);
+      particlesDrawn = true;
+      ctx.restore();
+      drawWeddingFraming(cam);
     } else {
       drawBackground();
       drawDecor();
@@ -2399,7 +2877,7 @@
       drawPhaseTint(darkness);
       drawStars(darkness);
     }
-    Particles.draw(ctx);
+    if (!particlesDrawn) Particles.draw(ctx);
     ctx.restore();
   }
 
@@ -2426,7 +2904,7 @@
     dt = Math.min(dt, 0.05);
     lastTime = timestamp;
 
-    if (state === 'start') updateIdleAnimation(dt);
+    if (state === 'start') { updateIdleAnimation(dt); updateMenuParallax(dt); }
     if (state === 'transition') updatePortalTransition(dt);
     if (state === 'wedding') updateWeddingScene(dt);
     if (state !== 'paused') update(dt);

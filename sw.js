@@ -63,8 +63,10 @@
 // PWA stuck on old skins list" report. Bumping this touches only the
 // Cache Storage entries this file manages; localStorage (coins,
 // unlocked/equipped skins, high score, achievements) and the Supabase
-// cloud save are untouched by it.
-const CACHE_NAME = 'mariana-runner-v16';
+// cloud save are untouched by it. v17, 2026-09-25: UI/motion pass
+// (index.html, css/style.css, js/game.js, js/account-ui.js,
+// js/leaderboard.js changed; no new files).
+const CACHE_NAME = 'mariana-runner-v17';
 const APP_SHELL = [
   './',
   './index.html',

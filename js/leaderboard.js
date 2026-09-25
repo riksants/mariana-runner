@@ -197,13 +197,24 @@
   // novo e sem nenhuma linha em game.js.
   function abrir() {
     if (frame) frame.classList.add('is-ranking-open');
+    overlay.classList.remove('is-leaving');
     overlay.hidden = false;
     carregar();
   }
 
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Fade curto de saída (.is-leaving no CSS); o menu volta junto, no fim.
   function fechar() {
-    overlay.hidden = true;
-    if (frame) frame.classList.remove('is-ranking-open');
+    if (overlay.hidden || overlay.classList.contains('is-leaving')) return;
+    const concluir = () => {
+      overlay.classList.remove('is-leaving');
+      overlay.hidden = true;
+      if (frame) frame.classList.remove('is-ranking-open');
+    };
+    if (reduceMotion) { concluir(); return; }
+    overlay.classList.add('is-leaving');
+    setTimeout(() => { if (overlay.classList.contains('is-leaving')) concluir(); }, 160);
   }
 
   // A tela inicial inteira é "toque para jogar" (game.js liga um clique na

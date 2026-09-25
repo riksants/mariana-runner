@@ -39,11 +39,13 @@
       <canvas id="game" width="800" height="300" role="img" aria-label="Área de jogo: Mariana Runner"></canvas>
 
       <div id="hud" aria-hidden="true" hidden>
-        <div id="hud-score"><span id="hud-score-value">00000</span></div>
-        <div id="hud-hiscore">HI <span id="hud-hiscore-value">00000</span></div>
-        <div id="hud-coins">
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><line x1="12" y1="7.5" x2="12" y2="16.5" stroke="currentColor" stroke-width="1.6"/></svg>
-          <span id="hud-coins-value">0</span>
+        <div class="hud-panel">
+          <div id="hud-score"><span id="hud-score-value">00000</span></div>
+          <div id="hud-hiscore">HI <span id="hud-hiscore-value">00000</span></div>
+          <div id="hud-coins">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="#f0c04a" stroke="currentColor" stroke-width="2"/><line x1="12" y1="8" x2="12" y2="16" stroke="#c99a2e" stroke-width="2" stroke-linecap="round"/></svg>
+            <span id="hud-coins-value">0</span>
+          </div>
         </div>
         <div id="status-effects">
           <div class="status-badge" id="status-shield" hidden>
@@ -76,17 +78,23 @@
       </div>
 
       <div id="achievement-toast" aria-hidden="true" hidden>
-        <div id="achievement-toast-title">CONQUISTA DESBLOQUEADA</div>
-        <div id="achievement-toast-name"></div>
+        <span class="toast-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M6 3h12v4.2a6 6 0 0 1-12 0V3z"/><path d="M6 5H3.4v1.8a3.6 3.6 0 0 0 3 3.5M18 5h2.6v1.8a3.6 3.6 0 0 1-3 3.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M10.5 13h3v3.6h-3zM7.4 18.4h9.2V21H7.4z"/></svg>
+        </span>
+        <span class="toast-text">
+          <span id="achievement-toast-title">CONQUISTA DESBLOQUEADA</span>
+          <span id="achievement-toast-name"></span>
+          <span id="achievement-toast-desc"></span>
+        </span>
       </div>
 
       <div id="tap-hint">Toque para pular</div>
 
-      <div id="overlay-start" class="overlay overlay--start">
+      <div id="overlay-start" class="overlay overlay--start" hidden>
         <!-- A conta sai do meio da tela e vira uma caixa no canto. Continua
              DENTRO da overlay de propósito: assim some junto com o menu
              durante a partida, sem nenhuma linha a mais em game.js. -->
-        <div id="account-strip">
+        <div id="account-strip" class="enter-item enter-item--drop" style="--i:0">
           <button type="button" id="btn-account" class="link-btn">ENTRAR / CRIAR CONTA</button>
           <span id="account-signed" hidden>
             <svg class="account-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4.8 20.2a7.2 7.2 0 0 1 14.4 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -96,12 +104,12 @@
           </span>
         </div>
 
-        <h1 class="title title--game">MARIANA RUNNER</h1>
-        <div class="title-rule" aria-hidden="true">
+        <h1 class="title title--game enter-item depth-near" style="--i:1">MARIANA RUNNER</h1>
+        <div class="title-rule enter-item depth-near" aria-hidden="true" style="--i:2">
           <svg class="title-rule-heart" viewBox="0 0 24 24"><path d="M12 20.5S3.8 15.4 3.8 9.9c0-2.6 2-4.4 4.3-4.4 1.7 0 3.1 1 3.9 2.3.8-1.3 2.2-2.3 3.9-2.3 2.3 0 4.3 1.8 4.3 4.4 0 5.5-8.2 10.6-8.2 10.6z" fill="currentColor"/></svg>
         </div>
 
-        <div class="hero-row">
+        <div class="hero-row enter-item" style="--i:3">
           <svg class="hero-spark" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 3.5l-7 3.5M23 12h-8M22 20.5l-7-3.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
           <button type="button" id="btn-start" class="pixel-btn pixel-btn--primary pixel-btn--hero">COMEÇAR<svg class="btn-glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l13-7.5-13-7.5z" fill="currentColor"/></svg></button>
           <svg class="hero-spark hero-spark--dir" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 3.5l-7 3.5M23 12h-8M22 20.5l-7-3.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
@@ -109,7 +117,7 @@
 
         <!-- Moedas e recorde numa barra só, separados por um filete. Os dois
              valores continuam vindo dos mesmos ids que game.js já preenche. -->
-        <div id="menu-stats">
+        <div id="menu-stats" class="enter-item" style="--i:4">
           <div class="menu-stat">
             <svg class="stat-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="#f0c04a" stroke="var(--ink)" stroke-width="2"/><line x1="12" y1="8" x2="12" y2="16" stroke="#c99a2e" stroke-width="2" stroke-linecap="round"/></svg>
             <span id="menu-coins-value">0</span>
@@ -127,12 +135,12 @@
         <!-- Personagem jogável: só decide quem corre na posição principal
              (game.js:playableCharacter) -- a skin equipada de cada um é
              escolhida à parte, no Guarda-Roupa. -->
-        <div id="character-select" role="group" aria-label="Escolher personagem">
+        <div id="character-select" class="enter-item" role="group" aria-label="Escolher personagem" style="--i:5">
           <button type="button" class="char-btn is-active" id="btn-char-mariana" data-character="mariana">MARIANA</button>
           <button type="button" class="char-btn" id="btn-char-alberto" data-character="alberto">ALBERTO</button>
         </div>
 
-        <div id="menu-buttons">
+        <div id="menu-buttons" class="enter-item" style="--i:6">
           <button type="button" id="btn-wardrobe" class="pixel-btn pixel-btn--small">
             <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.6 3 4 5.4 2.4 9.6l3.2 1.5L6 21h12l.4-9.9 3.2-1.5L20 5.4 15.4 3c-.5 1.6-1.8 2.5-3.4 2.5S9.1 4.6 8.6 3z"/></svg>
             <span>GUARDA-ROUPA</span>
@@ -146,7 +154,7 @@
         <!-- Placa decorativa: desenhada com os mesmos tons de madeira da
              sign.png que o jogo já usa e o mesmo coração do título. Puramente
              enfeite — não recebe clique nem leitor de tela. -->
-        <svg class="start-sign" viewBox="0 0 48 64" aria-hidden="true">
+        <svg class="start-sign enter-item depth-far" viewBox="0 0 48 64" aria-hidden="true" style="--i:7">
           <rect x="21" y="22" width="6" height="38" fill="#a9703f"/>
           <rect x="21" y="22" width="2.4" height="38" fill="#c08b55"/>
           <rect x="4" y="10" width="40" height="24" rx="2" fill="#a9703f"/>
@@ -156,33 +164,64 @@
         </svg>
       </div>
 
-      <div id="overlay-gameover" class="overlay" hidden>
-        <h2 class="title title--small">GAME OVER</h2>
-        <p class="score-line">Pontuação: <span id="final-score">0</span></p>
-        <p class="record-badge" id="record-badge" hidden>NOVO RECORDE!</p>
-        <button type="button" id="btn-restart" class="pixel-btn pixel-btn--primary">JOGAR NOVAMENTE</button>
-        <button type="button" id="btn-wardrobe-gameover" class="pixel-btn">GUARDA-ROUPA</button>
-        <p class="instruction">ESPAÇO PARA REINICIAR</p>
+      <!-- Telas de fim/pausa: um cartão de papel sobre o cenário congelado.
+           Os ids que o game.js preenche continuam os mesmos; --i dá a
+           ordem da entrada escalonada (ver "Camada de motion" no CSS). -->
+      <div id="overlay-gameover" class="overlay overlay--result" hidden>
+        <div class="result-card">
+          <h2 class="title title--small" style="--i:0">GAME OVER</h2>
+          <p class="record-badge" id="record-badge" hidden>NOVO RECORDE!</p>
+          <div class="result-stats" style="--i:1">
+            <div class="result-stat result-stat--main">
+              <span class="result-label">PONTUAÇÃO</span>
+              <span class="result-value" id="final-score">0</span>
+            </div>
+            <div class="result-stat">
+              <span class="result-label">RECORDE</span>
+              <span class="result-value" id="final-record">0</span>
+            </div>
+            <div class="result-stat">
+              <span class="result-label">MOEDAS</span>
+              <span class="result-value result-value--coins">
+                <svg class="stat-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="#f0c04a" stroke="var(--ink)" stroke-width="2"/><line x1="12" y1="8" x2="12" y2="16" stroke="#c99a2e" stroke-width="2" stroke-linecap="round"/></svg>
+                <span id="final-coins">+0</span>
+              </span>
+            </div>
+          </div>
+          <div class="result-actions" style="--i:2">
+            <button type="button" id="btn-restart" class="pixel-btn pixel-btn--primary">JOGAR NOVAMENTE</button>
+            <button type="button" id="btn-wardrobe-gameover" class="pixel-btn">GUARDA-ROUPA</button>
+          </div>
+          <p class="instruction" style="--i:3">ESPAÇO PARA REINICIAR</p>
+        </div>
       </div>
 
       <!-- Wedding-ending completion card. Same overlay/title/score-line/
            pixel-btn/instruction components as GAME OVER above — this
            screen is meant to read as "always part of Mariana Runner",
            not a bolted-on wedding-card design. -->
-      <div id="overlay-wedding-end" class="overlay" hidden>
-        <h2 class="title title--small">MARIANA SE CASOU!</h2>
-        <div class="title-rule" aria-hidden="true">
-          <svg class="title-rule-heart" viewBox="0 0 24 24"><path d="M12 20.5S3.8 15.4 3.8 9.9c0-2.6 2-4.4 4.3-4.4 1.7 0 3.1 1 3.9 2.3.8-1.3 2.2-2.3 3.9-2.3 2.3 0 4.3 1.8 4.3 4.4 0 5.5-8.2 10.6-8.2 10.6z" fill="currentColor"/></svg>
+      <div id="overlay-wedding-end" class="overlay overlay--result" hidden>
+        <div class="result-card">
+          <h2 class="title title--small" style="--i:0">MARIANA SE CASOU!</h2>
+          <div class="title-rule" aria-hidden="true" style="--i:1">
+            <svg class="title-rule-heart" viewBox="0 0 24 24"><path d="M12 20.5S3.8 15.4 3.8 9.9c0-2.6 2-4.4 4.3-4.4 1.7 0 3.1 1 3.9 2.3.8-1.3 2.2-2.3 3.9-2.3 2.3 0 4.3 1.8 4.3 4.4 0 5.5-8.2 10.6-8.2 10.6z" fill="currentColor"/></svg>
+          </div>
+          <p class="score-line" style="--i:2">Pontuação: <span id="wedding-end-score">42000</span></p>
+          <div class="result-actions" style="--i:3">
+            <button type="button" id="btn-wedding-restart" class="pixel-btn pixel-btn--primary">JOGAR NOVAMENTE</button>
+          </div>
+          <p class="instruction" style="--i:4">ESPAÇO PARA REINICIAR</p>
         </div>
-        <p class="score-line">Pontuação: <span id="wedding-end-score">42000</span></p>
-        <button type="button" id="btn-wedding-restart" class="pixel-btn pixel-btn--primary">JOGAR NOVAMENTE</button>
-        <p class="instruction">ESPAÇO PARA REINICIAR</p>
       </div>
 
-      <div id="overlay-pause" class="overlay" hidden>
-        <h2 class="title title--small">PAUSADO</h2>
-        <button type="button" id="btn-resume" class="pixel-btn pixel-btn--primary">CONTINUAR</button>
-        <p class="instruction">ESPAÇO / P PARA CONTINUAR</p>
+      <div id="overlay-pause" class="overlay overlay--result" hidden>
+        <div class="result-card">
+          <h2 class="title title--small" style="--i:0">PAUSADO</h2>
+          <div class="result-actions" style="--i:1">
+            <button type="button" id="btn-resume" class="pixel-btn pixel-btn--primary">CONTINUAR</button>
+          </div>
+          <p class="instruction" style="--i:2">ESPAÇO / P PARA CONTINUAR</p>
+        </div>
       </div>
 
       <div id="overlay-loading" class="overlay">
@@ -197,8 +236,9 @@
       </div>
 
       <div id="overlay-account" class="overlay overlay--account" hidden>
-        <h2 class="title title--small" id="account-title">ENTRAR</h2>
-        <form id="account-form" autocomplete="off">
+        <div class="panel-card account-card">
+        <h2 class="title title--small" id="account-title" style="--i:0">ENTRAR</h2>
+        <form id="account-form" autocomplete="off" style="--i:1">
           <label class="field">
             <span class="field-label">NICK</span>
             <input type="text" id="account-nick-input" maxlength="20" autocapitalize="none"
@@ -215,8 +255,9 @@
           <p class="account-msg" id="account-msg" role="status" aria-live="polite"></p>
           <button type="submit" id="btn-account-submit" class="pixel-btn pixel-btn--primary">ENTRAR</button>
         </form>
-        <button type="button" id="btn-account-toggle" class="link-btn">CRIAR UMA CONTA</button>
-        <button type="button" id="btn-account-back" class="pixel-btn pixel-btn--small">VOLTAR</button>
+        <button type="button" id="btn-account-toggle" class="link-btn" style="--i:2">CRIAR UMA CONTA</button>
+        <button type="button" id="btn-account-back" class="pixel-btn pixel-btn--small" style="--i:3">VOLTAR</button>
+        </div>
       </div>
 
       <div id="overlay-ranking" class="overlay overlay--ranking" hidden>
@@ -235,19 +276,50 @@
       </div>
 
       <div id="overlay-wardrobe" class="overlay overlay--wardrobe" hidden>
-        <div id="wardrobe-header">
+        <div id="wardrobe-header" style="--i:0">
           <h2 class="title title--small">GUARDA-ROUPA</h2>
-          <div id="wardrobe-coins">
-            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><line x1="12" y1="7.5" x2="12" y2="16.5" stroke="currentColor" stroke-width="1.6"/></svg>
+          <div id="wardrobe-tabs" role="tablist">
+            <button type="button" class="wardrobe-tab is-active" id="btn-wardrobe-tab-mariana" data-character="mariana" role="tab" aria-selected="true">MARIANA</button>
+            <button type="button" class="wardrobe-tab" id="btn-wardrobe-tab-alberto" data-character="alberto" role="tab" aria-selected="false">ALBERTO</button>
+          </div>
+          <div id="wardrobe-coins" class="coin-chip">
+            <svg class="stat-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="#f0c04a" stroke="var(--ink)" stroke-width="2"/><line x1="12" y1="8" x2="12" y2="16" stroke="#c99a2e" stroke-width="2" stroke-linecap="round"/></svg>
             <span id="wardrobe-coins-value">0</span>
+            <span class="coin-delta" id="wardrobe-coins-delta" aria-hidden="true"></span>
           </div>
         </div>
-        <div id="wardrobe-tabs" role="tablist">
-          <button type="button" class="wardrobe-tab is-active" id="btn-wardrobe-tab-mariana" data-character="mariana" role="tab" aria-selected="true">MARIANA</button>
-          <button type="button" class="wardrobe-tab" id="btn-wardrobe-tab-alberto" data-character="alberto" role="tab" aria-selected="false">ALBERTO</button>
+
+        <!-- Carrossel: a skin ativa no centro, a anterior e a próxima
+             menores dos lados. Cada item recebe um papel (is-center,
+             is-prev, is-next, is-far-prev, is-far-next, is-off) e o CSS
+             anima a troca de papéis de uma vez só. -->
+        <div id="wardrobe-body">
+          <div id="wardrobe-stage" role="group" aria-roledescription="carrossel" aria-label="Skins" style="--i:1">
+            <div class="wr-floor" aria-hidden="true"></div>
+            <div id="wardrobe-track"></div>
+            <button type="button" class="wr-nav wr-nav--prev" id="btn-wr-prev" aria-label="Skin anterior">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square"/></svg>
+            </button>
+            <button type="button" class="wr-nav wr-nav--next" id="btn-wr-next" aria-label="Próxima skin">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square"/></svg>
+            </button>
+          </div>
+
+          <div id="wardrobe-info" style="--i:2">
+            <span class="wr-count"><span id="wr-index">01</span>/<span id="wr-total">01</span></span>
+            <div class="wr-swap" id="wr-swap">
+              <h3 class="wr-name" id="wr-name">MARIANA</h3>
+              <div class="wr-meta">
+                <span class="wr-price" id="wr-price"></span>
+                <span class="wr-tag" id="wr-tag" hidden></span>
+              </div>
+            </div>
+            <button type="button" id="btn-wr-action" class="pixel-btn pixel-btn--primary wr-action">EQUIPAR</button>
+            <p class="wr-msg" id="wr-msg" role="status" aria-live="polite"></p>
+          </div>
         </div>
-        <div id="wardrobe-grid"></div>
-        <button type="button" id="btn-wardrobe-back" class="pixel-btn">VOLTAR</button>
+
+        <button type="button" id="btn-wardrobe-back" class="pixel-btn pixel-btn--small" style="--i:3">VOLTAR</button>
       </div>
 
       <p id="rotate-hint">
